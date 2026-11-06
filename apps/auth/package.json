@@ -1,0 +1,44 @@
+{
+  "name": "auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/main.ts",
+    "build": "prisma generate && tsc",
+    "start": "node --env-file=.env dist/src/main.js",
+    "check:ts": "prisma generate && tsc --noEmit",
+    "check:lint": "eslint .",
+    "fix:lint": "eslint . --fix",
+    "check:format": "prettier --check .",
+    "fix:format": "prettier --write .",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
+  },
+  "devDependencies": {
+    "@relay-ops/eslint-config": "workspace:*",
+    "@relay-ops/prettier-config": "workspace:*",
+    "@relay-ops/tsconfig": "workspace:*",
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "dotenv": "^18.0.9",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "prisma": "^7.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.4.1",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "fastify": "^5.12.8",
+    "jose": "^6.2.15",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "prettier": "@relay-ops/prettier-config"
+}

@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/main.ts",
+    "build": "tsc",
+    "start": "node --env-file=.env dist/main.js",
+    "check:ts": "tsc --noEmit",
+    "check:lint": "eslint .",
+    "fix:lint": "eslint . --fix",
+    "check:format": "prettier --check .",
+    "fix:format": "prettier --write ."
+  },
+  "dependencies": {
+    "@relay-ops/app-db": "workspace:*",
+    "fastify": "^5.12.8"
+  },
+  "devDependencies": {
+    "@relay-ops/eslint-config": "workspace:*",
+    "@relay-ops/prettier-config": "workspace:*",
+    "@relay-ops/tsconfig": "workspace:*",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "prettier": "@relay-ops/prettier-config"
+}

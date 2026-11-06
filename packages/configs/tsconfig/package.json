@@ -1,0 +1,18 @@
+{
+  "name": "@relay-ops/tsconfig",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./base.json": "./base.json",
+    "./node.json": "./node.json"
+  },
+  "devDependencies": {
+    "@relay-ops/prettier-config": "workspace:*",
+    "prettier": "^3.9.10"
+  },
+  "scripts": {
+    "check:format": "prettier --check .",
+    "fix:format": "prettier --write ."
+  },
+  "prettier": "@relay-ops/prettier-config"
+}

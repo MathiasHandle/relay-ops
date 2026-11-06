@@ -1,0 +1,35 @@
+{
+  "name": "@relay-ops/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.js",
+    "./node": "./node.js"
+  },
+  "devDependencies": {
+    "@relay-ops/prettier-config": "workspace:*",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "check:lint": "eslint .",
+    "fix:lint": "eslint . --fix",
+    "check:format": "prettier --check .",
+    "fix:format": "prettier --write ."
+  },
+  "prettier": "@relay-ops/prettier-config",
+  "peerDependencies": {
+    "eslint": "^10",
+    "typescript": "^6"
+  },
+  "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "eslint-plugin-unicorn": "^79.0.0",
+    "globals": "^17.14.0",
+    "typescript-eslint": "^8.72.1"
+  }
+}

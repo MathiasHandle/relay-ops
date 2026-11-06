@@ -1,0 +1,26 @@
+{
+  "name": "relay-ops",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "build:packages": "turbo run build --filter=./packages/**",
+    "dev": "turbo run dev",
+    "check:lint": "turbo run check:lint",
+    "check:ts": "turbo run check:ts",
+    "check:format": "turbo run check:format",
+    "fix:lint": "turbo run fix:lint",
+    "fix:format": "turbo run fix:format",
+    "test": "turbo run test"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.22.2",
+      "onFail": "download"
+    }
+  },
+  "devDependencies": {
+    "turbo": "^2.11.10"
+  },
+  "packageManager": "pnpm@10.31.0"
+}
