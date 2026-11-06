@@ -10,8 +10,8 @@
     }
   },
   "scripts": {
-    "build": "prisma generate && tsc",
-    "check:ts": "prisma generate && tsc --noEmit",
+    "build": "tsc",
+    "check:ts": "tsc --noEmit",
     "check:lint": "eslint .",
     "fix:lint": "eslint . --fix",
     "db:generate": "prisma generate",
