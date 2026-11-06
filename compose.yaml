@@ -1,0 +1,38 @@
+services:
+  postgres-auth:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: relay_ops_auth
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-auth:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d relay_ops_auth"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+  postgres-app:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: relay_ops_app
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-app:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d relay_ops_app"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+volumes:
+  db-auth:
+  db-app:
