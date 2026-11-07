@@ -35,7 +35,12 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
 ## Tooling
 
 - pnpm 10 workspaces + Turborepo, Node 24, ESM everywhere.
-- TypeScript 6 (NodeNext, `verbatimModuleSyntax`): relative imports need `.js` extensions.
+- TypeScript 6 (`moduleResolution: "Bundler"`, `verbatimModuleSyntax`): `tsc` only
+  type-checks (`noEmit`). Apps and `packages/app-db` are built with tsdown into `dist/`.
+- Imports without file extensions. Alias `@/` → `src/` (tsconfig `paths`, per app;
+  not in `packages/app-db`). Use relative imports inside the same module/folder and
+  `@/` for anything outside it (`@/shared/db/prisma`, `@/modules/oauth`).
+  `packages/configs/*` are loaded by Node directly and keep `.js` extensions.
 - ESLint 10 flat config, Prettier (no semicolons, double quotes, trailing commas).
 - Prisma 7 (`prisma-client` generator, `@prisma/adapter-pg`), Fastify 5, Zod 4, jose.
 - Local dev is hybrid: `docker compose up -d` runs only the databases, apps run on

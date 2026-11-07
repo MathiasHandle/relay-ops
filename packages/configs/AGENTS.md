@@ -21,7 +21,8 @@ apps and packages. `prettier-config` is a leaf and formats itself via a relative
 ## tsconfig
 
 - `base.json`: runtime-agnostic settings; `node.json`: extends base for Node.js.
-- Consumers extend `@relay-ops/tsconfig/node.json` and set `outDir`, `rootDir`, `include` themselves.
+- `node.json` uses `moduleResolution: "Bundler"` (builds are done by tsdown, `tsc` only type-checks).
+- Consumers extend `@relay-ops/tsconfig/node.json` and set `noEmit`, `paths` and `include` themselves.
 
 ## eslint
 

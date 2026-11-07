@@ -13,8 +13,9 @@ Owns the application database: Prisma schema, migrations and client. Consumers:
 
 - `prisma/schema.prisma`: generator output `src/generated/prisma` (gitignored, ignored by ESLint and Prettier).
 - `prisma/migrations/`: app migrations, run only against the app DB.
-- `prisma.config.ts`: loads `.env`; outside the tsconfig include, hence `/// <reference types="node" />`.
-- Build: `tsc` with `rootDir: "src"` and declarations; consumers need the build output.
+- `prisma.config.ts`: loads `.env`.
+- Build: tsdown with `dts`, output `dist/index.js` + `dist/index.d.ts`; consumers need the build output.
+- Relative imports only (no `@/` alias), so the emitted `.d.ts` stays resolvable for consumers.
 
 ## Rules
 

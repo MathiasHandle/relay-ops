@@ -15,8 +15,9 @@ testing), a Prisma client instance. No models yet.
 - `src/services/db/index.ts`: exports the shared `prisma` instance (PrismaPg adapter). Use it, do not create other clients.
 - `prisma/schema.prisma`: generator output `prisma/.generated` (gitignored, ignored by ESLint and Prettier).
 - `prisma/migrations/`: auth migrations, run only against the auth DB.
-- `prisma.config.ts`: loads `.env` via dotenv; outside the tsconfig include, hence `/// <reference types="node" />`.
-- Build: `tsc` with `rootDir: "."`, output `dist/src/main.js`.
+- `prisma.config.ts`: loads `.env` via dotenv.
+- `tsconfig.json`: `noEmit`, alias `@/*` → `src/*`; also type-checks `prisma/seed`, `prisma.config.ts` and `tsdown.config.ts`.
+- Build: tsdown (`tsdown.config.ts`), output `dist/main.js`; the generated Prisma client is bundled in, the generated client import stays relative (`prisma/.generated` is outside `src/`).
 
 ## Rules
 

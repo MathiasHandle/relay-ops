@@ -1,7 +1,7 @@
 import cors from "@fastify/cors"
 import Fastify from "fastify"
-import * as env from "./env.js"
-import { prisma } from "./services/db/index.js"
+import * as env from "./env"
+import { prisma } from "./services/db/index"
 
 const app = Fastify({ logger: true })
 

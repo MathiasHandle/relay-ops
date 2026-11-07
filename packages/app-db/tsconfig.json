@@ -1,10 +1,7 @@
 {
   "extends": "@relay-ops/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "declaration": true,
-    "declarationMap": true
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src", "prisma.config.ts", "tsdown.config.ts"]
 }

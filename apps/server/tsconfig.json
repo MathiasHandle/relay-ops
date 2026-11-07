@@ -1,8 +1,10 @@
 {
   "extends": "@relay-ops/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "tsdown.config.ts"]
 }

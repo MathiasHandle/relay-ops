@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsdown",
     "check:ts": "tsc --noEmit",
     "check:lint": "eslint .",
     "fix:lint": "eslint . --fix",
@@ -39,6 +39,7 @@
     "eslint": "^10.14.0",
     "prettier": "^3.9.10",
     "prisma": "^7.10.1",
+    "tsdown": "^0.23.7",
     "typescript": "^6.0.3"
   }
 }

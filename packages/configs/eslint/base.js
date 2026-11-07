@@ -59,7 +59,7 @@ export default defineConfig(
 
       "unicorn/no-await-in-promise-methods": "error",
 
-      // Order: side-effect imports, values (packages, @relay-ops/*, relative),
+      // Order: side-effect imports, values (packages, @relay-ops/*, @/ alias, relative),
       // types (same order). Groups are separated by a blank line.
       // `\u0000` as prefix = side-effect import, as suffix = `import type`.
       "simple-import-sort/imports": [
@@ -67,11 +67,12 @@ export default defineConfig(
         {
           groups: [
             ["^\\u0000"],
-            ["^node:", "^@?\\w", "^@relay-ops/", "^", "^\\."],
+            ["^node:", "^@?\\w", "^@relay-ops/", "^@/", "^", "^\\."],
             [
               "^node:.*\\u0000$",
               "^@?\\w.*\\u0000$",
               "^@relay-ops/.*\\u0000$",
+              "^@/.*\\u0000$",
               "\\u0000$",
               "^\\..*\\u0000$",
             ],

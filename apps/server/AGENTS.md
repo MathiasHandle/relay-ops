@@ -11,7 +11,7 @@ is no `src/env.ts` yet.
 ## Layout
 
 - `src/main.ts`: entry.
-- Build: `tsc` with `rootDir: "src"`, output `dist/main.js`.
+- Build: tsdown (`tsdown.config.ts`), output `dist/main.js`. Alias `@/*` → `src/*`.
 
 ## Rules
 
