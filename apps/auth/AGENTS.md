@@ -10,9 +10,13 @@ testing), a Prisma client instance. No models yet.
 
 ## Layout
 
-- `src/main.ts`: entry, Fastify setup, `onClose` hook disconnects Prisma.
-- `src/env.ts`: Zod env schema (`AUTH_DATABASE_URL`, `PORT` default 3002).
-- `src/services/db/index.ts`: exports the shared `prisma` instance (PrismaPg adapter). Use it, do not create other clients.
+- `src/main.ts`: composition root, `buildApp()` + `listen`.
+- `src/app.ts`: `buildApp()`: global error/404 handlers, CORS, `onClose` (Prisma disconnect),
+  module registration with prefixes.
+- `src/config/env.ts`: Zod env schema (`AUTH_DATABASE_URL`, `PORT` default 3002).
+- `src/shared/db/prisma.ts`: the shared `prisma` instance (PrismaPg adapter). Use it, do not create other clients.
+- `src/shared/errors/error-handler.ts`: global error handler (5xx logged, generic message) and 404 handler.
+- `src/modules/health/`: `GET /health`.
 - `prisma/schema.prisma`: generator output `prisma/.generated` (gitignored, ignored by ESLint and Prettier).
 - `prisma/migrations/`: auth migrations, run only against the auth DB.
 - `prisma.config.ts`: loads `.env` via dotenv.

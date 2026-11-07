@@ -58,6 +58,8 @@ export default defineConfig(
       ],
 
       "unicorn/no-await-in-promise-methods": "error",
+      // File names: kebab-case with an optional role suffix (oauth.error-handler.ts).
+      "unicorn/filename-case": ["error", { case: "kebabCase" }],
 
       // Order: side-effect imports, values (packages, @relay-ops/*, @/ alias, relative),
       // types (same order). Groups are separated by a blank line.

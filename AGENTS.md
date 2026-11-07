@@ -10,12 +10,12 @@ Current state: bootstrap only. Apps expose `GET /health`, Prisma schemas have no
 
 ## Architecture
 
-| Path                 | Role                                                                                    | Details                     |
-| -------------------- | --------------------------------------------------------------------------------------- | --------------------------- |
-| `apps/auth`          | Standalone JWT issuer (client credentials). Own DB `relay_ops_auth`. Port 3002.         | `apps/auth/AGENTS.md`       |
-| `apps/server`        | Public REST API (Fastify). Verifies JWTs via JWKS. Uses app DB. Port 3001.              | `apps/server/AGENTS.md`     |
-| `packages/app-db`    | Prisma schema, migrations and client for app DB `relay_ops_app`.                        | `packages/app-db/AGENTS.md` |
-| `packages/configs/*` | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`).    |                             |
+| Path                 | Role                                                                                 | Details                     |
+| -------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
+| `apps/auth`          | Standalone JWT issuer (client credentials). Own DB `relay_ops_auth`. Port 3002.      | `apps/auth/AGENTS.md`       |
+| `apps/server`        | Public REST API (Fastify). Verifies JWTs via JWKS. Uses app DB. Port 3001.           | `apps/server/AGENTS.md`     |
+| `packages/app-db`    | Prisma schema, migrations and client for app DB `relay_ops_app`.                     | `packages/app-db/AGENTS.md` |
+| `packages/configs/*` | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`). |                             |
 
 Planned, create only when needed: `apps/worker` (RabbitMQ consumer, HTTP delivery,
 uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
@@ -60,8 +60,31 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
   Zod parsing, a proper type, a type guard or another cleaner solution works; use
   `as` only when nothing else fits the context. `as const` is fine (e.g. enum-like
   objects). Not enforced by ESLint.
-- Validate env with Zod in `src/env.ts`.
+- Validate env with Zod in `src/config/env.ts`.
+- File names: kebab-case with a role suffix (`oauth.routes.ts`, `token.service.ts`,
+  `oauth.error-handler.ts`); enforced by `unicorn/filename-case`.
 - Code comments, log and error messages, docs: English.
+
+## Backend architecture (Fastify apps)
+
+Modular monolith, modules by feature:
+
+- `src/main.ts`: composition root (`buildApp()` + `listen`). `src/app.ts`: `buildApp()`
+  creates and configures Fastify without listening (tests use `app.inject()`).
+- `src/config/`: env. `src/shared/`: cross-module code (db client, global error handlers).
+- `src/modules/<name>/`: one Fastify plugin per module; `index.ts` is its only public
+  entry (registers routes, module-wide error handler and hooks). The URL prefix is set
+  where the module is registered in `app.ts`.
+- Inside a module: `*.routes.ts` (HTTP only: schema, call service, response),
+  `*.schemas.ts` (Zod), `*.errors.ts`, `*.service.ts` (logic, no Fastify
+  `request`/`reply`; throws typed domain errors). Many endpoints: one file per route
+  in `routes/`.
+- Modules own their tables: only the owning module writes them; reads across modules
+  are allowed. Other modules call its exported functions, never its internal files.
+  No circular module dependencies. For shared transactions pass the Prisma `tx` client.
+- Errors: global error and 404 handler in `shared/errors`; a module with its own error
+  contract sets it via `setErrorHandler` in its `index.ts` (encapsulated).
+- Start with fewer, larger modules; split when a module grows or gets another consumer.
 
 ## Dependencies
 
