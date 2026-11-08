@@ -50,7 +50,8 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
   `db:generate`; `build`, `check:ts` and `check:format` depend on it, the package
   scripts themselves do not generate.
 - Script naming: `check:*` only reports, `fix:*` writes.
-- Verify changes with: `pnpm turbo run check:ts check:lint check:format build`.
+- Verify changes with: `pnpm turbo run check:ts check:lint check:format build test:unit`.
+  Integration tests need the local databases (`docker compose up -d`): `test:integration`.
 
 ## Code conventions (enforced by ESLint)
 
@@ -68,6 +69,20 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
   PascalCase with camelCase fields, mapped via `@@map("table_name")` and
   `@map("column_name")` in `schema.prisma`.
 - Code comments, log and error messages, docs: English.
+
+## Testing
+
+- Vitest, tests colocated with the code: `*.test.ts` unit (no DB, no HTTP),
+  `*.int.test.ts` integration (`buildApp({ logger: false })` + `app.inject()` + real test DB).
+- Scripts per app: `test`, `test:unit`, `test:integration`, `test:watch`.
+- Integration tests use a dedicated database whose name ends with `_test`; a global setup
+  refuses any other name, resets it once per run (`prisma migrate reset`) and creates it if
+  missing. Never run tests against a dev or shared database.
+- Tests create their own data (random ids via helpers in `src/test/`), never rely on the
+  seed and never assume empty tables.
+- Assert responses with the production Zod schemas instead of casting.
+- Prisma blocks `migrate reset` when run by an AI agent: ask the user for explicit consent
+  before running integration tests, or let them run the tests.
 
 ## Backend architecture (Fastify apps)
 

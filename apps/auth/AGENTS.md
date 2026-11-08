@@ -26,6 +26,10 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
   `generateAccessToken` (JWT via jose) → `saveToken`. OAuth errors are mapped to
   RFC 6749 §5.2 responses in `oauth.error-handler.ts`. Allowed scopes: `scopes.ts`
   (source of truth until `packages/contracts`).
+- `src/test/`: `global-setup.ts` (`_test` guard, DB reset, throwaway signing key),
+  `create-test-client.ts` (client with random `clientId` and known secret), `http.ts`.
+- `vitest.config.ts`: loads `.env.test` before `src/config/env.ts` is imported; projects
+  `unit` and `integration`.
 - `prisma/schema.prisma`: generator output `prisma/.generated` (gitignored, ignored by ESLint and Prettier).
 - `prisma/migrations/`: auth migrations, run only against the auth DB.
 - `prisma.config.ts`: loads `.env` via dotenv, configures the seed.
@@ -43,6 +47,15 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
 - Access tokens: EdDSA JWT (RFC 9068, `typ: at+jwt`), stateless, never stored.
   Lifetime only in `ACCESS_TOKEN_LIFETIME_SECONDS`.
 - The signing key lives in `keys/` (gitignored), path from `JWT_PRIVATE_KEY_PATH`.
+
+## Testing
+
+- Setup: `docker compose up -d`, copy `.env.test.example` to `.env.test`, run
+  `pnpm test:integration`. The database `relay_ops_auth_test` (same `postgres-auth`
+  container) is created by `prisma migrate reset` on the first run.
+- The global setup generates a throwaway Ed25519 key into `.tmp/` (gitignored); tests
+  never use the real signing key.
+- Env set in the shell overrides `.env.test` (CI passes env directly).
 
 ## Planned scope
 

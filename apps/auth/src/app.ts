@@ -12,8 +12,13 @@ import { oauthModule } from "@/modules/oauth"
 import { prisma } from "@/shared/db/prisma"
 import { errorHandler, notFoundHandler } from "@/shared/errors/error-handler"
 
-export const buildApp = async () => {
-  const app = Fastify({ logger: true })
+type BuildAppOptions = {
+  // disabled in tests
+  logger: boolean
+}
+
+export const buildApp = async ({ logger }: BuildAppOptions) => {
+  const app = Fastify({ logger })
 
   // Validate and serialize route schemas with Zod.
   app.setValidatorCompiler(validatorCompiler)
