@@ -1,5 +1,4 @@
 import OAuth2Server from "@node-oauth/oauth2-server"
-import { env } from "@/config/env"
 import {
   sendOAuth2ServerResponse,
   toOAuth2ServerRequest,
@@ -7,12 +6,14 @@ import {
 import { oauthErrorResponseSchema } from "./oauth.errors"
 import { ACCESS_TOKEN_LIFETIME_SECONDS, OAuth2Model } from "./oauth.model"
 import { tokenResponseSchema } from "./oauth.schemas"
-import { loadSigningKey } from "./oauth.service"
 
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod"
+import type { OAuthModuleOptions } from "."
 
-export const oauthRoutes: FastifyPluginAsyncZod = async (fastify) => {
-  const signingKey = await loadSigningKey(env.JWT_PRIVATE_KEY_PATH)
+export const oauthRoutes: FastifyPluginAsyncZod<OAuthModuleOptions> = async (
+  fastify,
+  { signingKey },
+) => {
   const model = new OAuth2Model(fastify.log, signingKey)
 
   const oauth2server = new OAuth2Server({

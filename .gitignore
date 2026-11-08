@@ -149,4 +149,4 @@ vite.config.ts.timestamp-*
 .turbo
 
 roadmap.md
-keys
+apps/auth/keys

@@ -5,7 +5,9 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod"
+import { env } from "@/config/env"
 import { healthModule } from "@/modules/health"
+import { keysModule, loadSigningKey } from "@/modules/keys"
 import { oauthModule } from "@/modules/oauth"
 import { prisma } from "@/shared/db/prisma"
 import { errorHandler, notFoundHandler } from "@/shared/errors/error-handler"
@@ -33,8 +35,11 @@ export const buildApp = async () => {
     await prisma.$disconnect()
   })
 
+  const signingKey = await loadSigningKey(env.JWT_PRIVATE_KEY_PATH)
+
   await app.register(healthModule)
-  await app.register(oauthModule, { prefix: "/oauth" })
+  await app.register(keysModule, { signingKey })
+  await app.register(oauthModule, { prefix: "/oauth", signingKey })
 
   return app
 }
