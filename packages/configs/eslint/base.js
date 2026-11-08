@@ -2,6 +2,7 @@
 import js from "@eslint/js"
 import { defineConfig } from "eslint/config"
 import prettier from "eslint-config-prettier"
+import importX from "eslint-plugin-import-x"
 import simpleImportSort from "eslint-plugin-simple-import-sort"
 import unicorn from "eslint-plugin-unicorn"
 import tseslint from "typescript-eslint"
@@ -12,6 +13,7 @@ export default defineConfig(
   tseslint.configs.recommended,
   {
     plugins: {
+      "import-x": importX,
       "simple-import-sort": simpleImportSort,
       unicorn,
     },
@@ -24,11 +26,6 @@ export default defineConfig(
           message:
             "Do not use enums. Use a union type or an `as const` object instead.",
         },
-        {
-          selector: "ImportSpecifier[importKind='type']",
-          message:
-            "Import types in a separate `import type { ... }` statement, not mixed with values.",
-        },
       ],
 
       "@typescript-eslint/no-explicit-any": "error",
@@ -38,6 +35,8 @@ export default defineConfig(
         "error",
         { prefer: "type-imports", fixStyle: "separate-type-imports" },
       ],
+      // Inline `import { type X, Y }` → separate `import type { X }` (auto-fixable).
+      "import-x/consistent-type-specifier-style": ["error", "prefer-top-level"],
       // The Prisma client may only be imported via @relay-ops/app-db.
       // Packages with their own database (packages/app-db, apps/auth) turn this rule off.
       "@typescript-eslint/no-restricted-imports": [

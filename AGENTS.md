@@ -6,7 +6,8 @@ submit events to a REST API, events are persisted and delivered asynchronously
 idempotency, retries, DLQ and a transactional outbox; strict tenant isolation by
 `Organization`.
 
-Current state: bootstrap only. Apps expose `GET /health`, Prisma schemas have no models.
+Current state: `apps/auth` issues JWTs via `POST /oauth/token` (client credentials),
+JWKS endpoint pending; `apps/server` exposes only `GET /health`, app schema has no models.
 
 ## Architecture
 
@@ -63,6 +64,9 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
 - Validate env with Zod in `src/config/env.ts`.
 - File names: kebab-case with a role suffix (`oauth.routes.ts`, `token.service.ts`,
   `oauth.error-handler.ts`); enforced by `unicorn/filename-case`.
+- Database naming (both DBs): `snake_case` tables and columns. Prisma models stay
+  PascalCase with camelCase fields, mapped via `@@map("table_name")` and
+  `@map("column_name")` in `schema.prisma`.
 - Code comments, log and error messages, docs: English.
 
 ## Backend architecture (Fastify apps)

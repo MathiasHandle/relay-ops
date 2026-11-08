@@ -4,5 +4,6 @@ packages:
   - "packages/configs/*"
 
 ignoredBuiltDependencies:
+  - argon2
   - sharp
   - unrs-resolver
