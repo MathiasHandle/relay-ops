@@ -5,12 +5,18 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 
 ## Current state
 
-Only `GET /health`. `PORT` is read directly from `process.env` (default 3001); there
-is no `src/env.ts` yet.
+Skeleton only: `GET /health`, env validation, global error/404 handlers, CORS allowing
+`https://hoppscotch.io` (manual API testing). No authentication, domain modules or tests yet.
 
 ## Layout
 
-- `src/main.ts`: entry.
+- `src/main.ts`: composition root, `buildApp({ logger: true })` + `listen`.
+- `src/app.ts`: `buildApp({ logger })`: Zod compilers, global error/404 handlers, CORS,
+  `onClose` (Prisma disconnect), module registration with prefixes.
+- `src/config/env.ts`: Zod env schema (`PORT` default 3001). `APP_DATABASE_URL` is
+  validated by `@relay-ops/app-db`.
+- `src/shared/errors/error-handler.ts`: global error handler (5xx logged, generic message) and 404 handler.
+- `src/modules/health/`: `GET /health`.
 - Build: tsdown (`tsdown.config.ts`), output `dist/main.js`. Alias `@/*` → `src/*`.
 
 ## Rules
