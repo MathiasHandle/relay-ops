@@ -24,7 +24,8 @@ Skeleton only: `GET /health`, env validation, global error/404 handlers, CORS al
 - Database access only via `@relay-ops/app-db` (consumed from its `dist`; Turbo builds it first via `^build`).
 - Importing `@relay-ops/app-db` validates `APP_DATABASE_URL` and creates the client at import time.
 - Never access the auth database. Verify JWTs via the auth JWKS endpoint (check signature, `iss`, `aud`, `exp`, `scope`).
-- Derive the organization from the token via `ApiPrincipal`, never from the request body.
+- Derive the organization from the token via `OAuthIdentity` (lookup by `iss` + `sub`),
+  never from the request body.
 - Every read and write must be scoped to the caller's organization.
 
 ## Planned scope

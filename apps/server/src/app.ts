@@ -6,6 +6,8 @@ import {
 } from "fastify-type-provider-zod"
 import { prisma } from "@relay-ops/app-db"
 import { healthModule } from "@/modules/health"
+import { meModule } from "@/modules/me"
+import { authenticate } from "@/shared/auth/authenticate"
 import { errorHandler, notFoundHandler } from "@/shared/errors/error-handler"
 
 type BuildAppOptions = {
@@ -35,6 +37,15 @@ export const buildApp = async ({ logger }: BuildAppOptions) => {
   })
 
   await app.register(healthModule)
+  await app.register(
+    async (v1) => {
+      // Every route registered inside this scope requires a valid access token.
+      v1.addHook("onRequest", authenticate)
+
+      await v1.register(meModule)
+    },
+    { prefix: "/v1" },
+  )
 
   return app
 }

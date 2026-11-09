@@ -6,8 +6,10 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
 ## Current state
 
 - `OAuthClient` model (table `oauth_client`) with a seed (`prisma/seed/index.ts`);
-  secrets hashed with argon2.
+  secrets hashed with argon2. Seed clients have fixed `id`s (the JWT `sub`), referenced
+  by the app-db seed; do not change them.
 - `POST /oauth/token`: client credentials, issues stateless JWT access tokens.
+- `GET /.well-known/jwks.json`: public signing key (`keys` module).
 - `GET /health`, CORS allowing `https://hoppscotch.io` (manual API testing).
 
 ## Layout
@@ -20,6 +22,8 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
 - `src/shared/db/prisma.ts`: the shared `prisma` instance (PrismaPg adapter). Use it, do not create other clients.
 - `src/shared/errors/error-handler.ts`: global error handler (5xx logged, generic message) and 404 handler.
 - `src/modules/health/`: `GET /health`.
+- `src/modules/keys/`: loads the signing key once (`loadSigningKey`), serves the JWKS
+  (outside the `/oauth` prefix).
 - `src/modules/oauth/` (prefix `/oauth`): built on `@node-oauth/oauth2-server` with an own
   Fastify adapter (`oauth.adapter.ts`). The library drives the flow and calls our model
   (`oauth.model.ts`): `getClient` (DB lookup + argon2) → `validateScope` →
@@ -59,7 +63,5 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
 
 ## Planned scope
 
-- `keys` module: load the signing key once, `GET /.well-known/jwks.json` (public keys
-  only, outside the `/oauth` prefix).
 - Timing-safe client lookup (dummy hash when the client does not exist).
 - Later: `/oauth/revoke`, `/oauth/introspect`; users, login and sessions for the dashboard.

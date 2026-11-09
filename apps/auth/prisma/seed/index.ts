@@ -5,6 +5,7 @@ import type { Prisma } from "../.generated/client"
 
 const oAuthClients: Prisma.OAuthClientCreateManyInput[] = [
   {
+    id: "vkecyh9v4rev5devm2yqn0fi",
     name: "acme-app",
     allowedScopes: [CLIENT_SCOPES.EVENTS_READ, CLIENT_SCOPES.EVENTS_WRITE],
     clientId: "aprhb1k1lb20qqefrt8qp8it",
@@ -15,6 +16,7 @@ const oAuthClients: Prisma.OAuthClientCreateManyInput[] = [
     updatedAt: "2026-11-07T08:23:41.000Z",
   },
   {
+    id: "eqdktbzbpgwjigp3pbe7uuk4",
     name: "globex-app",
     allowedScopes: [CLIENT_SCOPES.EVENTS_READ, CLIENT_SCOPES.EVENTS_WRITE],
     clientId: "aelmy9nr1rab64svugkg6bp3",

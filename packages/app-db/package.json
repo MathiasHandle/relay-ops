@@ -18,6 +18,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset && pnpm db:seed",
+    "db:seed": "prisma db seed",
     "postinstall": "prisma generate",
     "check:format": "prettier --check .",
     "fix:format": "prettier --write ."
@@ -40,6 +42,7 @@
     "prettier": "^3.9.10",
     "prisma": "^7.10.1",
     "tsdown": "^0.23.7",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   }
 }

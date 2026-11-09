@@ -6,8 +6,9 @@ submit events to a REST API, events are persisted and delivered asynchronously
 idempotency, retries, DLQ and a transactional outbox; strict tenant isolation by
 `Organization`.
 
-Current state: `apps/auth` issues JWTs via `POST /oauth/token` (client credentials),
-JWKS endpoint pending; `apps/server` exposes only `GET /health`, app schema has no models.
+Current state: `apps/auth` issues JWTs via `POST /oauth/token` (client credentials) and
+serves `GET /.well-known/jwks.json`; `apps/server` exposes only `GET /health`; app schema
+has `Organization` and `OAuthIdentity`.
 
 ## Architecture
 
@@ -29,7 +30,9 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
   `postgres-app` (localhost:5433), see `compose.yaml`. Production: two Neon projects.
 - Env vars: `AUTH_DATABASE_URL` (auth only), `APP_DATABASE_URL` (server, worker, app-db).
 - Auth never reads app tables; server/worker never read auth tables. No cross-DB
-  foreign keys. Identity links via JWT `sub` / `client_id` → `ApiPrincipal` in app DB.
+  foreign keys. Identity links via JWT `iss` + `sub` (= `OAuthClient.id`) →
+  `OAuthIdentity` (`issuer`, `subject`) → `Organization` in app DB. `client_id` and
+  `name` are never used as keys.
 - The server verifies tokens via JWKS only (no auth DB access, no shared secret).
 - Frontend never imports `@relay-ops/app-db`; Prisma models are not API contracts, use DTOs.
 
@@ -62,6 +65,10 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
   Zod parsing, a proper type, a type guard or another cleaner solution works; use
   `as` only when nothing else fits the context. `as const` is fine (e.g. enum-like
   objects). Not enforced by ESLint.
+- Own functions with several parameters take one typed options object; destructure it
+  in the body (`const { a, b } = options`), not in the signature. Framework callbacks
+  (Fastify handlers, hooks, error handlers) keep their positional signature. Not
+  enforced by ESLint.
 - Validate env with Zod in `src/config/env.ts`.
 - File names: kebab-case with a role suffix (`oauth.routes.ts`, `token.service.ts`,
   `oauth.error-handler.ts`); enforced by `unicorn/filename-case`.
