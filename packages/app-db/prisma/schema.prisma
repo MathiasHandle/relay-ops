@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -15,6 +16,10 @@ model Organization {
   name String @unique
 
   oauthIdentities OAuthIdentity[]
+
+  events       Event[]
+  destinations Destination[]
+  deliveries   Delivery[]
 
   @@map("organization")
 }
@@ -34,4 +39,101 @@ model OAuthIdentity {
   @@unique([issuer, subject])
   @@index([organizationId])
   @@map("oauth_identity")
+}
+
+// discord, webhook site, slack ...
+model Destination {
+  id        String    @id @default(cuid(2))
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  // check (deleted_at IS NULL OR enabled = false)
+  deletedAt DateTime? @map("deleted_at")
+
+  humanReadableId String  @map("human_readable_id")
+  url             String
+  enabled         Boolean @default(true)
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  delivery Delivery[]
+
+  @@unique([id, organizationId]) // target of the composite FK from Delivery (tenant consistency)
+  @@unique([organizationId, humanReadableId], where: { deletedAt: null }) // Organization can have only a set of unique destinations
+  @@map("destination")
+}
+
+model Event {
+  id        String   @id @default(cuid(2))
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // customer's unique id of event to prevent multiple deliveries
+  externalId String @map("external_id")
+  name       String // order.created, payment:success ...
+  payload    Json
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  delivery Delivery[]
+
+  @@unique([id, organizationId]) // target of the composite FK from Delivery (tenant consistency)
+  @@unique([organizationId, externalId])
+  @@map("event")
+}
+
+enum EventDeliveryStatus {
+  PENDING
+  PROCESSING
+  FAILED
+  DELIVERED
+  RETRY_SCHEDULED
+}
+
+model Delivery {
+  id        String   @id @default(cuid(2))
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  status EventDeliveryStatus @default(PENDING)
+
+  organizationId String       @map("organization_id") // shared organization id used by composite FKs to enforce tenant consistency
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict) // just for convenient access in selects
+
+  // Composite FKs enforce organization consistency across Event, Destination, and Delivery
+  destinationId String      @map("destination_id")
+  destination   Destination @relation(fields: [destinationId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  eventId String @map("event_id")
+  event   Event  @relation(fields: [eventId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  deliveryAttempts DeliveryAttempt[]
+
+  @@unique([eventId, destinationId])
+  @@index([destinationId])
+  @@map("delivery")
+}
+
+enum DeliveryAttemptStatus {
+  FAILED
+  DELIVERED
+  IN_PROGRESS
+}
+
+model DeliveryAttempt {
+  id         String    @id @default(cuid(2))
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  // check ((status = 'IN_PROGRESS') = (finished_at IS NULL))
+  finishedAt DateTime? @map("finished_at")
+
+  status       DeliveryAttemptStatus @default(IN_PROGRESS)
+  responseCode Int?                  @map("response_code")
+  error        String?
+
+  deliveryId String   @map("delivery_id")
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryId])
+  @@map("delivery_attempt")
 }

@@ -122,6 +122,7 @@ Modular monolith, modules by feature:
 
 ## Working rules
 
+- Mentoring and review rules: follow "Pokyny pre mentora a code review" in `roadmap.md`.
 - Implement only what was asked. No unrequested features, logic or refactors; propose them instead.
 - Plans: present the plan for approval first, implement only after explicit approval.
 - AGENTS.md / CLAUDE.md: before editing any of them, show the proposed change and wait for the user's decision.

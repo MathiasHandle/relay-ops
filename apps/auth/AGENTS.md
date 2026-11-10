@@ -51,6 +51,8 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
 - Access tokens: EdDSA JWT (RFC 9068, `typ: at+jwt`), stateless, never stored.
   Lifetime only in `ACCESS_TOKEN_LIFETIME_SECONDS`.
 - The signing key lives in `keys/` (gitignored), path from `JWT_PRIVATE_KEY_PATH`.
+- SQL added by hand to a migration (CHECK constraints etc.) must be noted in
+  `schema.prisma` with a short comment, e.g. `// check (price >= 0)`.
 
 ## Testing
 

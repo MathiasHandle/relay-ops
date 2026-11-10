@@ -25,4 +25,6 @@ Owns the application database: Prisma schema, migrations and client. Consumers:
 - No relations to auth data; auth identities live only in `OAuthIdentity` (`issuer` +
   `subject`). Other tables reference `Organization` / `OAuthIdentity` ids, never `sub`.
 - After a schema change: `pnpm --filter @relay-ops/app-db db:migrate` (also regenerates the client), then rebuild.
+- SQL added by hand to a migration (CHECK constraints etc.) must be noted in
+  `schema.prisma` with a short comment, e.g. `// check (price >= 0)`.
 - Do not add a browser/frontend export; shared API types belong in `packages/contracts`.
