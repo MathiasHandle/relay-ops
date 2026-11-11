@@ -1,5 +1,6 @@
 import { createLocalJWKSet, jwtVerify } from "jose"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { env } from "@/config/env"
 import { prisma } from "@/shared/db/prisma"
@@ -8,7 +9,6 @@ import { basicAuth, FORM_CONTENT_TYPE, formBody } from "@/test/http"
 import { oauthErrorResponseSchema } from "./oauth.errors"
 import { ACCESS_TOKEN_LIFETIME_SECONDS } from "./oauth.model"
 import { tokenResponseSchema } from "./oauth.schemas"
-import { CLIENT_SCOPES } from "./scopes"
 
 import type { TestClient } from "@/test/create-test-client"
 

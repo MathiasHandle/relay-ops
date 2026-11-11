@@ -1,5 +1,5 @@
 import z from "zod"
-import { CLIENT_SCOPES } from "./scopes"
+import { CLIENT_SCOPES } from "@relay-ops/contracts"
 
 const clientScopeSchema = z.enum(CLIENT_SCOPES)
 export const clientScopesSchema = z.array(clientScopeSchema)

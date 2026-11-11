@@ -1,3 +1,4 @@
+import { authErrorResponseSchema } from "@/shared/auth/auth-error"
 import { meResponseBodySchema } from "./me.schemas"
 
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod"
@@ -10,6 +11,7 @@ export const meRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ["me"],
       response: {
         200: meResponseBodySchema,
+        401: authErrorResponseSchema,
       },
     },
     handler: async (request, reply) => {

@@ -28,8 +28,8 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
   Fastify adapter (`oauth.adapter.ts`). The library drives the flow and calls our model
   (`oauth.model.ts`): `getClient` (DB lookup + argon2) → `validateScope` →
   `generateAccessToken` (JWT via jose) → `saveToken`. OAuth errors are mapped to
-  RFC 6749 §5.2 responses in `oauth.error-handler.ts`. Allowed scopes: `scopes.ts`
-  (source of truth until `packages/contracts`).
+  RFC 6749 §5.2 responses in `oauth.error-handler.ts`. Allowed scopes:
+  `CLIENT_SCOPES` from `@relay-ops/contracts`.
 - `src/test/`: `global-setup.ts` (`_test` guard, DB reset, throwaway signing key),
   `create-test-client.ts` (client with random `clientId` and known secret), `http.ts`.
 - `vitest.config.ts`: loads `.env.test` before `src/config/env.ts` is imported; projects

@@ -1,4 +1,4 @@
-import { CLIENT_SCOPES } from "@/modules/oauth/scopes"
+import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { prisma } from "@/shared/db/prisma"
 
 import type { Prisma } from "../.generated/client"

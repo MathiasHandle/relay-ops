@@ -16,6 +16,9 @@ Swagger UI at `/docs`.
   `onClose` (Prisma disconnect), module registration with prefixes.
 - `src/config/env.ts`: Zod env schema (`PORT` default 3001). `APP_DATABASE_URL` is
   validated by `@relay-ops/app-db`.
+- `src/shared/auth/`: `authenticate` (`onRequest` on `/v1`, sets `request.principal`),
+  `requireScopes` (route-level `onRequest`, all listed scopes required),
+  `sendAuthError` + `authErrorResponseSchema` (RFC 6750 401/403).
 - `src/shared/errors/error-handler.ts`: global error handler (5xx logged, generic message) and 404 handler.
 - `src/shared/swagger/`: `@fastify/swagger` options (OpenAPI spec from Zod schemas via
   `jsonSchemaTransform`, global `bearerAuth`) and `@fastify/swagger-ui` options (UI at
@@ -34,6 +37,12 @@ Swagger UI at `/docs`.
 - Every route sets `schema.tags` with the tag of its URL resource (e.g. `events` for
   `/v1/events`), listed in `src/shared/swagger`.
   Public routes (no token) set `schema.security: []` to override the global `bearerAuth`.
+- A route that needs a scope sets `onRequest: requireScopes([...])` with `CLIENT_SCOPES`
+  from `@relay-ops/contracts`; document 401/403 with `authErrorResponseSchema`.
+
+## Testing
+
+- Vitest; test projects and file patterns are defined in `vitest.config.ts`.
 
 ## Planned scope
 

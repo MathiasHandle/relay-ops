@@ -7,9 +7,9 @@ import { clientScopesSchema } from "./oauth.schemas"
 
 import type OAuth2Server from "@node-oauth/oauth2-server"
 import type { Client, Falsey, User } from "@node-oauth/oauth2-server"
+import type { ClientScope } from "@relay-ops/contracts"
 import type { FastifyBaseLogger } from "fastify"
 import type { SigningKey } from "@/modules/keys"
-import type { ClientScope } from "./scopes"
 
 async function verifyClientSecret(secret: string, hash: string) {
   const isValid = await argon2.verify(hash, secret)

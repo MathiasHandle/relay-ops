@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto"
 import argon2 from "argon2"
-import { CLIENT_SCOPES } from "@/modules/oauth/scopes"
+import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { prisma } from "@/shared/db/prisma"
 
-import type { ClientScope } from "@/modules/oauth/scopes"
+import type { ClientScope } from "@relay-ops/contracts"
 
 type TestClientOptions = {
   allowedScopes?: ClientScope[]

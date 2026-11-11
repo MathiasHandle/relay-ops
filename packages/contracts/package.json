@@ -1,0 +1,30 @@
+{
+  "name": "@relay-ops/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check:ts": "tsc --noEmit",
+    "check:lint": "eslint .",
+    "fix:lint": "eslint . --fix",
+    "check:format": "prettier --check .",
+    "fix:format": "prettier --write ."
+  },
+  "prettier": "@relay-ops/prettier-config",
+  "devDependencies": {
+    "@relay-ops/eslint-config": "workspace:*",
+    "@relay-ops/prettier-config": "workspace:*",
+    "@relay-ops/tsconfig": "workspace:*",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "tsdown": "^0.23.7",
+    "typescript": "^6.0.3"
+  }
+}

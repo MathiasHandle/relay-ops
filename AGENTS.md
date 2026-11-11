@@ -17,11 +17,11 @@ has `Organization` and `OAuthIdentity`.
 | `apps/auth`          | Standalone JWT issuer (client credentials). Own DB `relay_ops_auth`. Port 3002.      | `apps/auth/AGENTS.md`       |
 | `apps/server`        | Public REST API (Fastify). Verifies JWTs via JWKS. Uses app DB. Port 3001.           | `apps/server/AGENTS.md`     |
 | `packages/app-db`    | Prisma schema, migrations and client for app DB `relay_ops_app`.                     | `packages/app-db/AGENTS.md` |
+| `packages/contracts` | Shared contracts (OAuth scopes, later API DTOs). No runtime deps, browser-safe.      |                             |
 | `packages/configs/*` | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`). |                             |
 
 Planned, create only when needed: `apps/worker` (RabbitMQ consumer, HTTP delivery,
-uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API),
-`packages/contracts` (Zod DTOs shared by server and dashboard), `apps/mcp`, `infra/`
+uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API), `apps/mcp`, `infra/`
 (Kubernetes).
 
 ### Data boundaries (do not break)
