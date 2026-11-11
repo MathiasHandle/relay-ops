@@ -1,4 +1,6 @@
 import cors from "@fastify/cors"
+import swagger from "@fastify/swagger"
+import swaggerUi from "@fastify/swagger-ui"
 import Fastify from "fastify"
 import {
   serializerCompiler,
@@ -9,6 +11,7 @@ import { healthModule } from "@/modules/health"
 import { meModule } from "@/modules/me"
 import { authenticate } from "@/shared/auth/authenticate"
 import { errorHandler, notFoundHandler } from "@/shared/errors/error-handler"
+import { SWAGGER_OPTIONS, SWAGGER_UI_OPTIONS } from "@/shared/swagger"
 
 type BuildAppOptions = {
   // disabled in tests
@@ -35,6 +38,10 @@ export const buildApp = async ({ logger }: BuildAppOptions) => {
   app.addHook("onClose", async () => {
     await prisma.$disconnect()
   })
+
+  // swagger
+  await app.register(swagger, SWAGGER_OPTIONS)
+  await app.register(swaggerUi, SWAGGER_UI_OPTIONS)
 
   await app.register(healthModule)
   await app.register(

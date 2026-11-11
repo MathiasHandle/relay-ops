@@ -7,6 +7,7 @@ export const meRoutes: FastifyPluginAsyncZod = async (fastify) => {
     method: "GET",
     url: "/me",
     schema: {
+      tags: ["me"],
       response: {
         200: meResponseBodySchema,
       },
