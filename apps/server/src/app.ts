@@ -7,6 +7,7 @@ import {
   validatorCompiler,
 } from "fastify-type-provider-zod"
 import { prisma } from "@relay-ops/app-db"
+import { eventModule } from "@/modules/event"
 import { healthModule } from "@/modules/health"
 import { meModule } from "@/modules/me"
 import { authenticate } from "@/shared/auth/authenticate"
@@ -50,6 +51,7 @@ export const buildApp = async ({ logger }: BuildAppOptions) => {
       v1.addHook("onRequest", authenticate)
 
       await v1.register(meModule)
+      await v1.register(eventModule)
     },
     { prefix: "/v1" },
   )

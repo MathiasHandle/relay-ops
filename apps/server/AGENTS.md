@@ -5,9 +5,10 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 
 ## Current state
 
-Skeleton only: `GET /health`, env validation, global error/404 handlers, CORS allowing
-`https://hoppscotch.io` (manual API testing). No authentication, domain modules or tests yet.
-Swagger UI at `/docs`.
+- `GET /health` (public), CORS allowing `https://hoppscotch.io` (manual API testing).
+- `/v1` scope: JWT verification via JWKS (`authenticate`), scope checks (`requireScopes`).
+- `GET /v1/me` (any valid token), `POST /v1/events` (`events:write`), idempotent by `externalId`.
+- Swagger UI at `/docs`.
 
 ## Layout
 
@@ -20,6 +21,7 @@ Swagger UI at `/docs`.
   `requireScopes` (route-level `onRequest`, all listed scopes required),
   `sendAuthError` + `authErrorResponseSchema` (RFC 6750 401/403).
 - `src/shared/errors/error-handler.ts`: global error handler (5xx logged, generic message) and 404 handler.
+- `src/shared/errors/error-response.ts`: `domainErrorResponseSchema` for module domain errors.
 - `src/shared/swagger/`: `@fastify/swagger` options (OpenAPI spec from Zod schemas via
   `jsonSchemaTransform`, global `bearerAuth`) and `@fastify/swagger-ui` options (UI at
   `/docs`, spec at `/docs/json`). Registered in `app.ts` before all modules, outside `/v1`.
@@ -39,6 +41,10 @@ Swagger UI at `/docs`.
   Public routes (no token) set `schema.security: []` to override the global `bearerAuth`.
 - A route that needs a scope sets `onRequest: requireScopes([...])` with `CLIENT_SCOPES`
   from `@relay-ops/contracts`; document 401/403 with `authErrorResponseSchema`.
+- Domain errors extend the module's base error and carry a `code` from its `as const`
+  code map; services never set HTTP status. The module error handler maps code → status
+  (`Record<Code, number>`, so every code needs a status) and rethrows anything else to
+  the global handler. Document these responses with `domainErrorResponseSchema`.
 
 ## Testing
 
@@ -46,6 +52,5 @@ Swagger UI at `/docs`.
 
 ## Planned scope
 
-- `POST /v1/events` (Zod validation, returns `202` with Event and Delivery ids); idempotency via unique `(organizationId, source, externalId)`.
 - `GET /v1/events/:id` or `GET /v1/deliveries/:id` with authorization checks.
 - Publish delivery jobs to RabbitMQ, later through a transactional outbox.

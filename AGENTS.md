@@ -6,19 +6,19 @@ submit events to a REST API, events are persisted and delivered asynchronously
 idempotency, retries, DLQ and a transactional outbox; strict tenant isolation by
 `Organization`.
 
-Current state: `apps/auth` issues JWTs via `POST /oauth/token` (client credentials) and
-serves `GET /.well-known/jwks.json`; `apps/server` exposes only `GET /health`; app schema
-has `Organization` and `OAuthIdentity`.
+Current state: `apps/auth` issues JWTs (client credentials) and serves JWKS;
+`apps/server` verifies JWTs and checks scopes, event ingestion is in progress.
+App schema: see `packages/app-db`.
 
 ## Architecture
 
-| Path                 | Role                                                                                 | Details                     |
-| -------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
-| `apps/auth`          | Standalone JWT issuer (client credentials). Own DB `relay_ops_auth`. Port 3002.      | `apps/auth/AGENTS.md`       |
-| `apps/server`        | Public REST API (Fastify). Verifies JWTs via JWKS. Uses app DB. Port 3001.           | `apps/server/AGENTS.md`     |
-| `packages/app-db`    | Prisma schema, migrations and client for app DB `relay_ops_app`.                     | `packages/app-db/AGENTS.md` |
-| `packages/contracts` | Shared contracts (OAuth scopes, later API DTOs). No runtime deps, browser-safe.      |                             |
-| `packages/configs/*` | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`). |                             |
+| Path                 | Role                                                                                   | Details                     |
+| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- |
+| `apps/auth`          | Standalone JWT issuer (client credentials). Own DB `relay_ops_auth`. Port 3002.        | `apps/auth/AGENTS.md`       |
+| `apps/server`        | Public REST API (Fastify). Verifies JWTs via JWKS. Uses app DB. Port 3001.             | `apps/server/AGENTS.md`     |
+| `packages/app-db`    | Prisma schema, migrations and client for app DB `relay_ops_app`.                       | `packages/app-db/AGENTS.md` |
+| `packages/contracts` | Shared contracts (OAuth scopes, API enums, later DTOs). No runtime deps, browser-safe. |                             |
+| `packages/configs/*` | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`).   |                             |
 
 Planned, create only when needed: `apps/worker` (RabbitMQ consumer, HTTP delivery,
 uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API), `apps/mcp`, `infra/`
