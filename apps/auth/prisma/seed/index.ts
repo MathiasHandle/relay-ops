@@ -26,6 +26,18 @@ const oAuthClients: Prisma.OAuthClientCreateManyInput[] = [
     createdAt: "2026-11-07T13:57:09.000Z",
     updatedAt: "2026-11-07T13:57:09.000Z",
   },
+  {
+    // Read-only client  acme-app (scope tests)
+    id: "jp8b492opkpntu1s1ldp9e6k",
+    name: "acme-reader",
+    allowedScopes: [CLIENT_SCOPES.EVENTS_READ],
+    clientId: "o5ilo5u6qtfs9o7jq26j26f7",
+    // 123456
+    secretHash:
+      "$argon2id$v=19$m=65536,t=3,p=4$U3DQMTHxU78ylW+7F+OMIg$8kxEV69YpugML99DxZN3vHjTuH2EcXwpJs3qNHM7Saw",
+    createdAt: "2026-11-11T09:00:00.000Z",
+    updatedAt: "2026-11-11T09:00:00.000Z",
+  },
 ]
 
 async function seed() {

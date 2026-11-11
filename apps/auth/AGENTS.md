@@ -7,7 +7,8 @@ flow. Not a full OAuth/OIDC server (no Keycloak). Owns its own database.
 
 - `OAuthClient` model (table `oauth_client`) with a seed (`prisma/seed/index.ts`);
   secrets hashed with argon2. Seed clients have fixed `id`s (the JWT `sub`), referenced
-  by the app-db seed; do not change them.
+  by the app-db seed; do not change them. Seed clients: `acme-app` and `globex-app`
+  (`events:read` + `events:write`), `acme-reader` (`events:read` only).
 - `POST /oauth/token`: client credentials, issues stateless JWT access tokens.
 - `GET /.well-known/jwks.json`: public signing key (`keys` module).
 - `GET /health`, CORS allowing `https://hoppscotch.io` (manual API testing).
