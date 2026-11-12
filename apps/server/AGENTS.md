@@ -49,6 +49,12 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 ## Testing
 
 - Vitest; test projects and file patterns are defined in `vitest.config.ts`.
+- Integration setup: `docker compose up -d`, copy `.env.test.example` to `.env.test`, run
+  `pnpm test:integration`. The database `relay_ops_app_test` (`postgres-app` container)
+  is created by `prisma migrate reset` (run in `packages/app-db`) on the first run.
+- The global setup serves a JWKS with a throwaway Ed25519 key at `AUTH_JWKS_URL`; tests
+  sign tokens with `signTestToken` (`src/test/tokens.ts`), apps/auth is not needed.
+- Test data via `src/test/factories.ts` (random organization, identity, destination).
 
 ## Planned scope
 
