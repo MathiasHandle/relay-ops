@@ -1,0 +1,10 @@
+{
+  "extends": "@relay-ops/tsconfig/node.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "tsdown.config.ts", "vitest.config.ts"]
+}

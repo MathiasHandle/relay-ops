@@ -8,7 +8,7 @@ frontend.
 - `./queue` (deps: `amqplib`, `zod`):
   - `connectQueue({ url, logger })`: AMQP connection with an error listener + one channel.
   - `DELIVERY_TOPOLOGY` and `assertDeliveryTopology({ channel })`: delivery exchange,
-    queue and binding; called by the producer (server) at startup.
+    queue and binding; called by both producer (server) and consumer (worker).
   - `deliveryJobSchema`, `DeliveryJob`: job message `{ deliveryId }`.
 
 ## Rules

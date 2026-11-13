@@ -161,6 +161,55 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
+  apps/worker:
+    dependencies:
+      '@relay-ops/app-db':
+        specifier: workspace:*
+        version: link:../../packages/app-db
+      '@relay-ops/backend-shared':
+        specifier: workspace:*
+        version: link:../../packages/backend-shared
+      amqplib:
+        specifier: ^2.3.1
+        version: 2.3.1
+      fastify:
+        specifier: ^5.12.8
+        version: 5.12.8
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@relay-ops/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/configs/eslint
+      '@relay-ops/prettier-config':
+        specifier: workspace:*
+        version: link:../../packages/configs/prettier
+      '@relay-ops/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/configs/tsconfig
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      eslint:
+        specifier: ^10.14.0
+        version: 10.14.0(jiti@2.7.0)
+      prettier:
+        specifier: ^3.9.10
+        version: 3.9.10
+      tsdown:
+        specifier: ^0.23.7
+        version: 0.23.7(tsx@4.23.15)(typescript@6.0.3)
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/app-db:
     dependencies:
       '@prisma/adapter-pg':

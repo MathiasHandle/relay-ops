@@ -8,7 +8,7 @@ idempotency, retries, DLQ and a transactional outbox; strict tenant isolation by
 
 Current state: `apps/auth` issues JWTs (client credentials) and serves JWKS;
 `apps/server` verifies JWTs, checks scopes, stores events and publishes delivery jobs
-to RabbitMQ.
+to RabbitMQ; `apps/worker` consumes them.
 App schema: see `packages/app-db`.
 
 ## Architecture
@@ -17,14 +17,14 @@ App schema: see `packages/app-db`.
 | ------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------- |
 | `apps/auth`               | Standalone JWT issuer (client credentials). Own DB `relay_ops_auth`. Port 3002.        | `apps/auth/AGENTS.md`               |
 | `apps/server`             | Public REST API (Fastify). Verifies JWTs via JWKS. Uses app DB. Port 3001.             | `apps/server/AGENTS.md`             |
+| `apps/worker`             | RabbitMQ consumer, HTTP delivery to destinations. Uses app DB. Port 3003.              | `apps/worker/AGENTS.md`             |
 | `packages/app-db`         | Prisma schema, migrations and client for app DB `relay_ops_app`.                       | `packages/app-db/AGENTS.md`         |
 | `packages/contracts`      | Shared contracts (OAuth scopes, API enums, later DTOs). No runtime deps, browser-safe. |                                     |
 | `packages/backend-shared` | Code shared by Node apps (server, worker): queue topology and job schema. Node only.   | `packages/backend-shared/AGENTS.md` |
 | `packages/configs/*`      | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`).   |                                     |
 
-Planned, create only when needed: `apps/worker` (RabbitMQ consumer, HTTP delivery,
-uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API), `apps/mcp`, `infra/`
-(Kubernetes).
+Planned, create only when needed: `apps/dashboard` (Next.js, talks only to the server
+HTTP API), `apps/mcp`, `infra/` (Kubernetes).
 
 ### Data boundaries (do not break)
 
