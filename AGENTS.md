@@ -47,8 +47,8 @@ uses app-db), `apps/dashboard` (Next.js, talks only to the server HTTP API), `ap
   `packages/configs/*` are loaded by Node directly and keep `.js` extensions.
 - ESLint 10 flat config, Prettier (no semicolons, double quotes, trailing commas).
 - Prisma 7 (`prisma-client` generator, `@prisma/adapter-pg`), Fastify 5, Zod 4, jose.
-- Local dev is hybrid: `docker compose up -d` runs only the databases, apps run on
-  the host via `pnpm dev`.
+- Local dev is hybrid: `docker compose up -d` runs the databases and RabbitMQ (management
+  UI at http://localhost:15672, vhost `relay-ops`), apps run on the host via `pnpm dev`.
 - Run tasks via Turbo from the root. Prisma client generation is the turbo task
   `db:generate`; `build`, `check:ts` and `check:format` depend on it, the package
   scripts themselves do not generate.

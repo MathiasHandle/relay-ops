@@ -33,6 +33,30 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+  rabbitmq-server:
+    image: rabbitmq:4-management
+    # RabbitMQ stores data per node name (rabbit@<hostname>); a fixed hostname
+    # keeps the data in the volume when the container is recreated
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_VHOST: relay-ops
+    ports:
+      - "5672:5672" # AMQP protocol
+      - "15672:15672" # management
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
 volumes:
   db-auth:
   db-app:
+  rabbitmq:
+    driver: local
