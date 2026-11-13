@@ -108,9 +108,15 @@ importers:
       '@relay-ops/app-db':
         specifier: workspace:*
         version: link:../../packages/app-db
+      '@relay-ops/backend-shared':
+        specifier: workspace:*
+        version: link:../../packages/backend-shared
       '@relay-ops/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      amqplib:
+        specifier: ^2.3.1
+        version: 2.3.1
       fastify:
         specifier: ^5.12.8
         version: 5.12.8
@@ -203,6 +209,40 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/backend-shared:
+    dependencies:
+      amqplib:
+        specifier: ^2.3.1
+        version: 2.3.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@relay-ops/eslint-config':
+        specifier: workspace:*
+        version: link:../configs/eslint
+      '@relay-ops/prettier-config':
+        specifier: workspace:*
+        version: link:../configs/prettier
+      '@relay-ops/tsconfig':
+        specifier: workspace:*
+        version: link:../configs/tsconfig
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      eslint:
+        specifier: ^10.14.0
+        version: 10.14.0(jiti@2.7.0)
+      prettier:
+        specifier: ^3.9.10
+        version: 3.9.10
+      tsdown:
+        specifier: ^0.23.7
+        version: 0.23.7(tsx@4.23.15)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1360,6 +1400,10 @@ packages:
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+
+  amqplib@2.3.1:
+    resolution: {integrity: sha512-0njHPLSE/xJUBeLWGgzniMuzTeyUt3o7WmAJobBlbSnvOTe9l5PxrlA+5iZW8spKteijDnkIZI81zAFV2Wzulw==}
+    engines: {node: '>=18'}
 
   argon2@0.45.2:
     resolution: {integrity: sha512-41gOiSQBpQf+7H7HyLZbUqRZxrNk5ps39TsJKILjWuOyAOialUkztuIVL/Y/l+n5iSA2C4/jFg3FUYso/cX7TA==}
@@ -3859,6 +3903,8 @@ snapshots:
       fast-uri: 3.1.9
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
+
+  amqplib@2.3.1: {}
 
   argon2@0.45.2:
     dependencies:

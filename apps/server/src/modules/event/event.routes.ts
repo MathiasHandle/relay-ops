@@ -11,6 +11,11 @@ import { createEvent } from "./event.service"
 import type { Delivery, Destination, Event } from "@relay-ops/app-db"
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod"
 import type z from "zod"
+import type { DeliveryPublisher } from "@/shared/queue/delivery-publisher"
+
+export type EventRoutesOptions = {
+  deliveryPublisher: DeliveryPublisher
+}
 
 type CreateEventResponse = z.infer<typeof createEventResponseSchema>
 
@@ -44,7 +49,12 @@ function mapCreateEventResponse(
   }
 }
 
-export const eventRoutes: FastifyPluginAsyncZod = async (fastify) => {
+export const eventRoutes: FastifyPluginAsyncZod<EventRoutesOptions> = async (
+  fastify,
+  options,
+) => {
+  const { deliveryPublisher } = options
+
   fastify.route({
     method: "POST",
     url: "/events",
@@ -68,6 +78,7 @@ export const eventRoutes: FastifyPluginAsyncZod = async (fastify) => {
         organizationId,
         requested: request.body,
         logger: request.log,
+        deliveryPublisher,
       })
 
       return reply

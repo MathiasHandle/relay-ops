@@ -5,6 +5,7 @@ import { CLIENT_SCOPES, DELIVERY_STATUS } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { authErrorResponseSchema } from "@/shared/auth/auth-error"
 import { domainErrorResponseSchema } from "@/shared/errors/error-response"
+import { createFakeDeliveryPublisher } from "@/test/delivery-publisher"
 import { createTestDestination, createTestTenant } from "@/test/factories"
 import { bearer, signTestToken } from "@/test/tokens"
 import { EVENT_ERROR_CODE } from "./event.errors"
@@ -13,9 +14,14 @@ import { createEventResponseSchema } from "./event.schemas"
 import type { ClientScope } from "@relay-ops/contracts"
 
 let app: Awaited<ReturnType<typeof buildApp>>
+// Shared by all tests: assert only on jobs of the deliveries a test created.
+const deliveryPublisher = createFakeDeliveryPublisher()
 
 beforeAll(async () => {
-  app = await buildApp({ logger: false })
+  app = await buildApp({
+    logger: false,
+    deliveryPublisher: deliveryPublisher.publisher,
+  })
 })
 
 afterAll(async () => {

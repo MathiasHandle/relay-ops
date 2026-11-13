@@ -7,16 +7,19 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 
 - `GET /health` (public), CORS allowing `https://hoppscotch.io` (manual API testing).
 - `/v1` scope: JWT verification via JWKS (`authenticate`), scope checks (`requireScopes`).
-- `GET /v1/me` (any valid token), `POST /v1/events` (`events:write`), idempotent by `externalId`.
+- `GET /v1/me` (any valid token), `POST /v1/events` (`events:write`), idempotent by `externalId`;
+  a new event publishes one delivery job `{ deliveryId }` per delivery to RabbitMQ
+  (an idempotent retry publishes nothing).
 - Swagger UI at `/docs`.
 
 ## Layout
 
 - `src/main.ts`: composition root, `buildApp({ logger: true })` + `listen`.
-- `src/app.ts`: `buildApp({ logger })`: Zod compilers, global error/404 handlers, CORS,
-  `onClose` (Prisma disconnect), module registration with prefixes.
-- `src/config/env.ts`: Zod env schema (`PORT` default 3001). `APP_DATABASE_URL` is
-  validated by `@relay-ops/app-db`.
+- `src/app.ts`: `buildApp({ logger, deliveryPublisher? })`: Zod compilers, global error/404
+  handlers, CORS, RabbitMQ connection + delivery topology (skipped when a publisher is
+  passed), `onClose` (Prisma, RabbitMQ), module registration with prefixes.
+- `src/config/env.ts`: Zod env schema (`PORT` default 3001, `RABBITMQ_URL` incl. vhost).
+  `APP_DATABASE_URL` is validated by `@relay-ops/app-db`.
 - `src/shared/auth/`: `authenticate` (`onRequest` on `/v1`, sets `request.principal`),
   `requireScopes` (route-level `onRequest`, all listed scopes required),
   `sendAuthError` + `authErrorResponseSchema` (RFC 6750 401/403).
@@ -25,6 +28,10 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 - `src/shared/swagger/`: `@fastify/swagger` options (OpenAPI spec from Zod schemas via
   `jsonSchemaTransform`, global `bearerAuth`) and `@fastify/swagger-ui` options (UI at
   `/docs`, spec at `/docs/json`). Registered in `app.ts` before all modules, outside `/v1`.
+- `src/shared/queue/queue-connection.ts`: `connectServerQueue({ app })`: one RabbitMQ
+  connection + channel per app, delivery topology, closed in `onClose`.
+- `src/shared/queue/delivery-publisher.ts`: `DeliveryPublisher` type and
+  `createDeliveryPublisher({ channel })` (JSON, persistent, to the delivery exchange).
 - `src/modules/health/`: `GET /health`.
 - Build: tsdown (`tsdown.config.ts`), output `dist/main.js`. Alias `@/*` → `src/*`.
 
@@ -45,6 +52,9 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
   code map; services never set HTTP status. The module error handler maps code → status
   (`Record<Code, number>`, so every code needs a status) and rethrows anything else to
   the global handler. Document these responses with `domainErrorResponseSchema`.
+- Modules receive queue publishers via plugin register options (e.g.
+  `eventModule` → `{ deliveryPublisher }`); they never connect to RabbitMQ themselves.
+- Publish only after the DB transaction commits.
 
 ## Testing
 
@@ -55,8 +65,10 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 - The global setup serves a JWKS with a throwaway Ed25519 key at `AUTH_JWKS_URL`; tests
   sign tokens with `signTestToken` (`src/test/tokens.ts`), apps/auth is not needed.
 - Test data via `src/test/factories.ts` (random organization, identity, destination).
+- Tests pass `createFakeDeliveryPublisher()` (`src/test/delivery-publisher.ts`) to
+  `buildApp`, so they never connect to RabbitMQ; assert on its `published` jobs.
 
 ## Planned scope
 
 - `GET /v1/events/:id` or `GET /v1/deliveries/:id` with authorization checks.
-- Publish delivery jobs to RabbitMQ, later through a transactional outbox.
+- Publish delivery jobs through a transactional outbox.

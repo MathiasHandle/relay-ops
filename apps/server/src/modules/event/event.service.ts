@@ -10,6 +10,7 @@ import {
 import type { Event, Prisma } from "@relay-ops/app-db"
 import type { FastifyBaseLogger } from "fastify"
 import type z from "zod"
+import type { DeliveryPublisher } from "@/shared/queue/delivery-publisher"
 import type { destinationSchema } from "./event.schemas"
 
 type VerifyDestinationParams = {
@@ -161,10 +162,37 @@ async function saveEvent(params: SaveEventParams) {
   return result
 }
 
+type PublishDeliveryJobsParams = {
+  eventId: string
+  deliveryIds: string[]
+  deliveryPublisher: DeliveryPublisher
+  logger: FastifyBaseLogger
+}
+
+/**
+ * Publishes one delivery job per delivery
+ */
+async function publishDeliveryJobs(params: PublishDeliveryJobsParams) {
+  const { eventId, deliveryIds, deliveryPublisher, logger } = params
+
+  try {
+    await deliveryPublisher.publish(
+      deliveryIds.map((deliveryId) => ({ deliveryId })),
+    )
+    logger.debug({ eventId, deliveryIds }, "delivery jobs published")
+  } catch (err) {
+    logger.error(
+      { err, eventId, deliveryIds },
+      "failed to publish delivery jobs, deliveries stay pending",
+    )
+  }
+}
+
 type CreateEventParams = {
   organizationId: string
   requested: RequestedEvent & { event: { externalId: string } }
   logger: FastifyBaseLogger
+  deliveryPublisher: DeliveryPublisher
 }
 
 type CreateEventResult = {
@@ -176,7 +204,7 @@ type CreateEventResult = {
 export async function createEvent(
   params: CreateEventParams,
 ): Promise<CreateEventResult> {
-  const { organizationId, requested, logger } = params
+  const { organizationId, requested, logger, deliveryPublisher } = params
   const { externalId } = requested.event
 
   if (requested.destinations.length === 0) {
@@ -202,6 +230,14 @@ export async function createEvent(
     event: requested.event,
     destinationIds: destinations.map((d) => d.id),
     organizationId,
+    logger,
+  })
+
+  // process deliveries
+  await publishDeliveryJobs({
+    eventId: createdEvent.id,
+    deliveryIds: createdDeliveries.map((d) => d.id),
+    deliveryPublisher,
     logger,
   })
 

@@ -5,6 +5,7 @@ import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { env } from "@/config/env"
 import { meResponseBodySchema } from "@/modules/me/me.schemas"
+import { createFakeDeliveryPublisher } from "@/test/delivery-publisher"
 import { createTestTenant } from "@/test/factories"
 import { bearer, signTestToken } from "@/test/tokens"
 import { authErrorResponseSchema } from "./auth-error"
@@ -13,7 +14,10 @@ let app: Awaited<ReturnType<typeof buildApp>>
 let tenant: Awaited<ReturnType<typeof createTestTenant>>
 
 beforeAll(async () => {
-  app = await buildApp({ logger: false })
+  app = await buildApp({
+    logger: false,
+    deliveryPublisher: createFakeDeliveryPublisher().publisher,
+  })
   tenant = await createTestTenant()
 })
 

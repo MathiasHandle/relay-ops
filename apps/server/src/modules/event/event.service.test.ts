@@ -1,5 +1,6 @@
 import Fastify from "fastify"
 import { describe, expect, it, vi } from "vitest"
+import { createFakeDeliveryPublisher } from "@/test/delivery-publisher"
 import { MissingDestinationError } from "./event.errors"
 import { createEvent } from "./event.service"
 
@@ -16,6 +17,7 @@ describe("createEvent", () => {
         destinations: [],
       },
       logger: log,
+      deliveryPublisher: createFakeDeliveryPublisher().publisher,
     })
 
     await expect(result).rejects.toBeInstanceOf(MissingDestinationError)
