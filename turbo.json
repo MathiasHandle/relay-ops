@@ -25,13 +25,15 @@
       "cache": false
     },
     "test": {
-      "dependsOn": ["^build", "db:generate"]
+      "dependsOn": ["^build", "db:generate"],
+      "cache": false
     },
     "test:unit": {
       "dependsOn": ["^build", "db:generate"]
     },
     "test:integration": {
-      "dependsOn": ["^build", "db:generate"]
+      "dependsOn": ["^build", "db:generate"],
+      "cache": false
     },
     "dev": {
       "cache": false,

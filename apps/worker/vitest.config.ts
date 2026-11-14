@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    passWithNoTests: true,
+    passWithNoTests: false,
     projects: [
       {
         extends: true,
@@ -27,6 +27,7 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["src/**/*.int.test.ts"],
+          globalSetup: ["./src/test/global-setup.ts"],
         },
       },
     ],
