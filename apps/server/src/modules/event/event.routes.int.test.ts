@@ -96,6 +96,82 @@ async function countRows(organizationId: string) {
 }
 
 describe("POST /v1/events", () => {
+  describe("daily event quota", () => {
+    it("counts only new events per organization and permits replay at the limit", async () => {
+      const tenant = await setupWriter()
+      const destination = await createTestDestination({
+        organizationId: tenant.organizationId,
+      })
+      await prisma.event.createMany({
+        data: Array.from({ length: 99 }, () => ({
+          organizationId: tenant.organizationId,
+          externalId: randomUUID(),
+          name: "existing",
+          payload: {},
+        })),
+      })
+      const body = eventBody({ destinations: [destination.humanReadableId] })
+      const invalid = await postEvent({
+        token: tenant.token,
+        body: eventBody({ destinations: ["missing"] }),
+      })
+      expect(invalid.statusCode).toBe(422)
+      expect((await countRows(tenant.organizationId)).events).toBe(99)
+      expect((await postEvent({ token: tenant.token, body })).statusCode).toBe(
+        201,
+      )
+      expect((await postEvent({ token: tenant.token, body })).statusCode).toBe(
+        200,
+      )
+
+      const rejected = await postEvent({
+        token: tenant.token,
+        body: eventBody({ destinations: [destination.humanReadableId] }),
+      })
+      expect(rejected.statusCode).toBe(429)
+      expect(domainErrorResponseSchema.parse(rejected.json()).code).toBe(
+        EVENT_ERROR_CODE.DAILY_EVENT_QUOTA_EXCEEDED,
+      )
+      expect((await countRows(tenant.organizationId)).events).toBe(100)
+
+      const other = await setupWriter()
+      const otherDestination = await createTestDestination({
+        organizationId: other.organizationId,
+      })
+      const otherResponse = await postEvent({
+        token: other.token,
+        body: eventBody({ destinations: [otherDestination.humanReadableId] }),
+      })
+      expect(otherResponse.statusCode).toBe(201)
+    })
+
+    it("does not count events created before the current UTC day", async () => {
+      const tenant = await setupWriter()
+      const destination = await createTestDestination({
+        organizationId: tenant.organizationId,
+      })
+      const now = new Date()
+      const yesterday = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 1,
+      )
+      await prisma.event.createMany({
+        data: Array.from({ length: 100 }, () => ({
+          organizationId: tenant.organizationId,
+          externalId: randomUUID(),
+          name: "old",
+          payload: {},
+          createdAt: yesterday,
+        })),
+      })
+
+      const response = await postEvent({
+        token: tenant.token,
+        body: eventBody({ destinations: [destination.humanReadableId] }),
+      })
+      expect(response.statusCode).toBe(201)
+    })
+  })
+
   describe("authorization", () => {
     it("rejects a token without events:write", async () => {
       const { organizationId, token } = await setupWriter({

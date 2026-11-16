@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util"
 import { prisma } from "@relay-ops/app-db"
 import { DeliveryPublishError } from "@/shared/queue/delivery-publisher.errors"
 import {
+  DailyEventQuotaExceededError,
   DisabledDestinationError,
   EventConflictError,
   MissingDestinationError,
@@ -109,6 +110,29 @@ function isSameEvent(params: IsSameEventParams) {
   )
 }
 
+type VerifyDailyQuotaParams = {
+  db: Prisma.TransactionClient
+  organizationId: string
+  now: Date
+}
+
+/**
+ * Rejects new events after the organization reaches its daily quota
+ */
+async function verifyDailyQuota(params: VerifyDailyQuotaParams) {
+  const { db, organizationId, now } = params
+
+  const startOfDay = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  )
+  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
+  const eventsToday = await db.event.count({
+    where: { organizationId, createdAt: { gte: startOfDay, lt: endOfDay } },
+  })
+
+  if (eventsToday >= 100) throw new DailyEventQuotaExceededError()
+}
+
 type SaveEventParams = {
   event: {
     externalId: string
@@ -129,8 +153,13 @@ async function saveEvent(params: SaveEventParams) {
   logger.debug(logContext, "persisting event and deliveries")
 
   const result = await prisma.$transaction(async (tx) => {
+    // check daily events quota
+    const now = new Date()
+    await verifyDailyQuota({ db: tx, organizationId, now })
+
     const createdEvent = await tx.event.create({
       data: {
+        createdAt: now,
         externalId: event.externalId,
         name: event.name,
         payload: event.payload,

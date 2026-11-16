@@ -3,6 +3,7 @@ export const EVENT_ERROR_CODE = {
   DESTINATION_DISABLED: "DESTINATION_DISABLED",
   DESTINATION_MISSING: "DESTINATION_MISSING",
   EVENT_CONFLICT: "EVENT_CONFLICT",
+  DAILY_EVENT_QUOTA_EXCEEDED: "DAILY_EVENT_QUOTA_EXCEEDED",
 } as const
 
 export type EventErrorCode =
@@ -52,5 +53,13 @@ export class EventConflictError extends EventError {
     )
 
     this.externalId = externalId
+  }
+}
+
+export class DailyEventQuotaExceededError extends EventError {
+  readonly code = EVENT_ERROR_CODE.DAILY_EVENT_QUOTA_EXCEEDED
+
+  constructor() {
+    super("Daily event quota exceeded")
   }
 }
