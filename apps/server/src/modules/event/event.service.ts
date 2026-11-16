@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util"
 import { prisma } from "@relay-ops/app-db"
+import { DeliveryPublishError } from "@/shared/queue/delivery-publisher.errors"
 import {
   DisabledDestinationError,
   EventConflictError,
@@ -181,9 +182,24 @@ async function publishDeliveryJobs(params: PublishDeliveryJobsParams) {
     )
     logger.debug({ eventId, deliveryIds }, "delivery jobs published")
   } catch (err) {
+    if (err instanceof DeliveryPublishError) {
+      logger.error(
+        {
+          err,
+          eventId,
+          deliveryId: err.deliveryId,
+          confirmedDeliveryIds: err.confirmedDeliveryIds,
+          unattemptedDeliveryIds: err.unattemptedDeliveryIds,
+        },
+        "Failed to publish delivery job",
+      )
+
+      return
+    }
+
     logger.error(
       { err, eventId, deliveryIds },
-      "failed to publish delivery jobs, deliveries stay pending",
+      "Failed to publish delivery jobs",
     )
   }
 }

@@ -13,13 +13,15 @@ export async function connectQueue(params: ConnectQueueParams) {
   const { url, logger } = params
 
   const connection = await connect(url)
-
   // without an "error" listener a broker-side close crashes the process
   connection.on("error", (err) => {
     logger.error({ err }, "RabbitMQ connection error")
   })
 
-  const channel = await connection.createChannel()
+  const channel = await connection.createConfirmChannel()
+  channel.on("error", (err) => {
+    logger.error({ err }, "RabbitMQ channel error")
+  })
 
   return {
     connection,
