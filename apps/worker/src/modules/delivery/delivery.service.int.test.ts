@@ -47,15 +47,18 @@ describe("processDelivery with PostgreSQL", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it.each(["DELIVERED", "FAILED"] as const)(
-    "leaves terminal %s deliveries unchanged even with an inactive destination",
-    async (status) => {
+  it.each([
+    { status: "DELIVERED", kind: "already-delivered" },
+    { status: "FAILED", kind: "already-failed" },
+  ] as const)(
+    "leaves terminal $status deliveries unchanged even with an inactive destination",
+    async ({ status, kind }) => {
       const { delivery } = await createTestDelivery({ status, enabled: false })
       const before = await readDelivery(delivery.id)
 
       await expect(
         processDelivery({ deliveryId: delivery.id, logger }),
-      ).resolves.toEqual({ kind: "already-finished" })
+      ).resolves.toEqual({ kind })
 
       expect(await readDelivery(delivery.id)).toEqual(before)
       expect(fetchMock).not.toHaveBeenCalled()
@@ -135,7 +138,7 @@ describe("processDelivery with PostgreSQL", () => {
 
     await expect(
       processDelivery({ deliveryId: delivery.id, logger }),
-    ).resolves.toEqual({ kind: "attempt-failed" })
+    ).resolves.toEqual({ kind: "retryable-failure", failedAttemptsCount: 1 })
 
     expect(await readDelivery(delivery.id)).toMatchObject({
       status: "PENDING",
@@ -158,7 +161,7 @@ describe("processDelivery with PostgreSQL", () => {
 
     await expect(
       processDelivery({ deliveryId: delivery.id, logger }),
-    ).resolves.toEqual({ kind: "attempt-failed" })
+    ).resolves.toEqual({ kind: "retryable-failure", failedAttemptsCount: 1 })
 
     expect(await readDelivery(delivery.id)).toMatchObject({
       status: "PENDING",
@@ -174,6 +177,76 @@ describe("processDelivery with PostgreSQL", () => {
     })
   })
 
+  it("stops after four completed temporary failures on one delivery", async () => {
+    const { delivery } = await createTestDelivery()
+    const params = { deliveryId: delivery.id, logger }
+    fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
+
+    for (const count of [1, 2, 3]) {
+      await expect(processDelivery(params)).resolves.toEqual({
+        kind: "retryable-failure",
+        failedAttemptsCount: count,
+      })
+      const current = await readDelivery(delivery.id)
+      expect(current.status).toBe("PENDING")
+      expect(current.deliveryAttempts).toHaveLength(count)
+    }
+
+    await expect(processDelivery(params)).resolves.toEqual({
+      kind: "max-attempts-reached",
+    })
+    const completed = await readDelivery(delivery.id)
+    expect(completed.status).toBe("FAILED")
+    expect(completed.deliveryAttempts).toHaveLength(4)
+    expect(
+      completed.deliveryAttempts.every(
+        (attempt) => attempt.status === "FAILED",
+      ),
+    ).toBe(true)
+    await expect(processDelivery(params)).resolves.toEqual({
+      kind: "already-failed",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it("stops on a permanent HTTP error without retrying", async () => {
+    const { delivery } = await createTestDelivery()
+    fetchMock.mockResolvedValue(new Response(null, { status: 400 }))
+
+    await expect(
+      processDelivery({ deliveryId: delivery.id, logger }),
+    ).resolves.toEqual({
+      kind: "permanent-failure",
+    })
+    expect(await readDelivery(delivery.id)).toMatchObject({
+      status: "FAILED",
+      deliveryAttempts: [{ status: "FAILED", responseCode: 400 }],
+    })
+  })
+
+  it("does not count an unfinished attempt towards the retry limit", async () => {
+    const { delivery } = await createTestDelivery()
+    await prisma.deliveryAttempt.create({
+      data: { deliveryId: delivery.id, status: "IN_PROGRESS" },
+    })
+    fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
+
+    await expect(
+      processDelivery({ deliveryId: delivery.id, logger }),
+    ).resolves.toEqual({
+      kind: "retryable-failure",
+      failedAttemptsCount: 1,
+    })
+    const current = await readDelivery(delivery.id)
+    expect(current.status).toBe("PENDING")
+    expect(current.deliveryAttempts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: "IN_PROGRESS", finishedAt: null }),
+        expect.objectContaining({ status: "FAILED", responseCode: 503 }),
+      ]),
+    )
+  })
+
   it("persists a timeout as a finished failed attempt", async () => {
     const { delivery } = await createTestDelivery()
     const controller = new AbortController()
@@ -186,7 +259,7 @@ describe("processDelivery with PostgreSQL", () => {
 
     await expect(
       processDelivery({ deliveryId: delivery.id, logger }),
-    ).resolves.toEqual({ kind: "attempt-failed" })
+    ).resolves.toEqual({ kind: "retryable-failure", failedAttemptsCount: 1 })
 
     expect(await readDelivery(delivery.id)).toMatchObject({
       status: "PENDING",
@@ -211,7 +284,7 @@ describe("processDelivery with PostgreSQL", () => {
     const before = await readDelivery(delivery.id)
 
     await expect(processDelivery(params)).resolves.toEqual({
-      kind: "already-finished",
+      kind: "already-delivered",
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -223,7 +296,8 @@ describe("processDelivery with PostgreSQL", () => {
     const params = { deliveryId: delivery.id, logger }
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 503 }))
     await expect(processDelivery(params)).resolves.toEqual({
-      kind: "attempt-failed",
+      kind: "retryable-failure",
+      failedAttemptsCount: 1,
     })
     const first = await readDelivery(delivery.id)
 

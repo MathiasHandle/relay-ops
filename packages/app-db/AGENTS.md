@@ -1,7 +1,7 @@
 # packages/app-db (`@relay-ops/app-db`)
 
 Owns the application database: Prisma schema, migrations and client. Consumers:
-`apps/server` and the future `apps/worker`. Never the frontend.
+`apps/server` and `apps/worker`. Never the frontend.
 
 ## Public API (`"."` export only, from `dist/`)
 

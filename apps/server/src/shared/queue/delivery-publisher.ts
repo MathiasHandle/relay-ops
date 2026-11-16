@@ -86,8 +86,8 @@ async function publishJob(params: PublishJobParams): Promise<void> {
   try {
     await new Promise<void>((resolve, reject) => {
       channel.publish(
-        DELIVERY_TOPOLOGY.exchange,
-        DELIVERY_TOPOLOGY.routingKey,
+        DELIVERY_TOPOLOGY.process.exchange,
+        DELIVERY_TOPOLOGY.process.routingKey,
         Buffer.from(JSON.stringify(job)),
         {
           persistent: true,

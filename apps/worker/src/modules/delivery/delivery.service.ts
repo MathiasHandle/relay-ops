@@ -1,4 +1,5 @@
 import { prisma } from "@relay-ops/app-db"
+import { MAX_DELIVERY_ATTEMPTS } from "@relay-ops/backend-shared/queue"
 import { HttpRequestError } from "@/shared/http/http-request.errors"
 import { makeRequest } from "@/shared/http/make-request"
 import {
@@ -10,9 +11,97 @@ import {
 
 import type { FastifyBaseLogger } from "fastify"
 
+type ProcessDeliveryParams = {
+  deliveryId: string
+  logger: FastifyBaseLogger
+}
+
+export type ProcessDeliveryResult =
+  | { kind: "delivered" }
+  | { kind: "already-delivered" }
+  | { kind: "already-failed" }
+  | { kind: "not-found" }
+  | { kind: "destination-disabled" }
+  | { kind: "permanent-failure" }
+  | { kind: "retryable-failure"; failedAttemptsCount: number }
+  | { kind: "max-attempts-reached" }
+
+export async function processDelivery(
+  params: ProcessDeliveryParams,
+): Promise<ProcessDeliveryResult> {
+  const { deliveryId, logger } = params
+  const delivery = await findDelivery({ db: prisma, deliveryId })
+
+  // not found or already delivered deliveries
+  if (!delivery) return { kind: "not-found" }
+  if (delivery.status === "DELIVERED") {
+    return { kind: "already-delivered" }
+  }
+
+  if (delivery.status === "FAILED") {
+    return { kind: "already-failed" }
+  }
+
+  const deliveryLogger = logger.child({
+    organizationId: delivery.organizationId,
+    eventId: delivery.eventId,
+  })
+
+  // disabled or deleted destination
+  if (!delivery.destination.enabled || delivery.destination.deletedAt) {
+    await updateDeliveryStatus({ db: prisma, deliveryId, status: "FAILED" })
+    deliveryLogger.info("Delivery stopped because destination is inactive")
+    return { kind: "destination-disabled" }
+  }
+
+  // create DeliveryAttempt + make http request to destination
+  const attempt = await createDeliveryAttempt({ db: prisma, deliveryId })
+  const attemptLogger = deliveryLogger.child({ attemptId: attempt.id })
+  const startedAt = performance.now()
+  const result = await deliverPayload({
+    logger: attemptLogger,
+    url: delivery.destination.url,
+    deliveryId,
+    event: delivery.event,
+  })
+
+  // handle http failure
+  if (result.kind === "failure") {
+    return handleFailedAttempt({
+      deliveryId,
+      attemptId: attempt.id,
+      previousFailedAttempts: delivery._count.deliveryAttempts,
+      result,
+      logger: attemptLogger,
+      startedAt,
+    })
+  }
+
+  // finish successfull delivery
+  await completeDelivery({
+    deliveryId,
+    attemptId: attempt.id,
+    responseCode: result.responseCode,
+  })
+
+  attemptLogger.info(
+    {
+      responseCode: result.responseCode,
+      duration: performance.now() - startedAt,
+    },
+    "Delivery result saved",
+  )
+  return { kind: "delivered" }
+}
+
 type DeliveryHttpResult =
   | { kind: "success"; responseCode: number }
-  | { kind: "failure"; responseCode: number | null; error: string }
+  | {
+      kind: "failure"
+      responseCode: number | null
+      error: string
+      shouldRetry: boolean
+    }
 
 type DeliveryPayloadParams = {
   logger: FastifyBaseLogger
@@ -51,18 +140,24 @@ async function deliverPayload(
         error.reason === "timeout"
           ? "Delivery HTTP request timed out"
           : "Delivery HTTP request failed",
+      shouldRetry: true,
     }
   }
 
-  if (result.response.status < 200 || result.response.status >= 300) {
+  const status = result.response.status
+  const shouldRetry =
+    status === 408 || status === 429 || (status >= 500 && status < 600)
+
+  if (status < 200 || status >= 300) {
     return {
       kind: "failure",
-      responseCode: result.response.status,
+      responseCode: status,
       error: "Destination returned a non-success HTTP status",
+      shouldRetry,
     }
   }
 
-  return { kind: "success", responseCode: result.response.status }
+  return { kind: "success", responseCode: status }
 }
 
 type CompleteDeliveryParams = {
@@ -84,83 +179,83 @@ async function completeDelivery(params: CompleteDeliveryParams) {
   })
 }
 
-export type ProcessDeliveryResult =
-  | { kind: "delivered" }
-  | { kind: "already-finished" }
-  | { kind: "not-found" }
-  | { kind: "destination-disabled" }
-  | { kind: "attempt-failed" }
-
-type ProcessDeliveryParams = {
+type FailDeliveryParams = {
   deliveryId: string
-  logger: FastifyBaseLogger
+  attemptId: string
+  responseCode: number | null
+  error: string
 }
 
-export async function processDelivery(
-  params: ProcessDeliveryParams,
+async function failDelivery(params: FailDeliveryParams) {
+  const { deliveryId, attemptId, responseCode, error } = params
+
+  await prisma.$transaction(async (tx) => {
+    await updateDeliveryAttempt({
+      db: tx,
+      deliveryId,
+      attemptId,
+      result: { status: "FAILED", responseCode, error },
+    })
+
+    await updateDeliveryStatus({ db: tx, deliveryId, status: "FAILED" })
+  })
+}
+
+type HandleFailedAttemptParams = {
+  deliveryId: string
+  attemptId: string
+  previousFailedAttempts: number
+  result: Extract<DeliveryHttpResult, { kind: "failure" }>
+  logger: FastifyBaseLogger
+  startedAt: number
+}
+
+async function handleFailedAttempt(
+  params: HandleFailedAttemptParams,
 ): Promise<ProcessDeliveryResult> {
-  const { deliveryId, logger } = params
-  const delivery = await findDelivery({ db: prisma, deliveryId })
-
-  if (!delivery) return { kind: "not-found" }
-  if (delivery.status === "DELIVERED" || delivery.status === "FAILED") {
-    return { kind: "already-finished" }
-  }
-
-  const deliveryLogger = logger.child({
-    organizationId: delivery.organizationId,
-    eventId: delivery.eventId,
-  })
-
-  if (!delivery.destination.enabled || delivery.destination.deletedAt) {
-    await updateDeliveryStatus({ db: prisma, deliveryId, status: "FAILED" })
-    deliveryLogger.info("Delivery stopped because destination is inactive")
-    return { kind: "destination-disabled" }
-  }
-
-  const attempt = await createDeliveryAttempt({ db: prisma, deliveryId })
-  const attemptLogger = deliveryLogger.child({ attemptId: attempt.id })
-  const startedAt = performance.now()
-  const result = await deliverPayload({
-    logger: attemptLogger,
-    url: delivery.destination.url,
+  const {
     deliveryId,
-    event: delivery.event,
-  })
+    attemptId,
+    previousFailedAttempts,
+    result,
+    logger,
+    startedAt,
+  } = params
+  const failedAttemptsCount = previousFailedAttempts + 1
+  const maxAttemptsReached = failedAttemptsCount >= MAX_DELIVERY_ATTEMPTS
 
-  if (result.kind === "failure") {
+  if (result.shouldRetry && !maxAttemptsReached) {
+    // retryable failure and max attempts not reached
     await updateDeliveryAttempt({
       db: prisma,
       deliveryId,
-      attemptId: attempt.id,
+      attemptId,
       result: {
         status: "FAILED",
         responseCode: result.responseCode,
         error: result.error,
       },
     })
-    attemptLogger.warn(
-      {
-        responseCode: result.responseCode,
-        duration: performance.now() - startedAt,
-      },
-      "Delivery attempt failed",
-    )
-    return { kind: "attempt-failed" }
+  } else {
+    // pernament failure or max attempts reached
+    await failDelivery({
+      deliveryId,
+      attemptId,
+      responseCode: result.responseCode,
+      error: result.error,
+    })
   }
 
-  await completeDelivery({
-    deliveryId,
-    attemptId: attempt.id,
-    responseCode: result.responseCode,
-  })
-
-  attemptLogger.info(
+  logger.warn(
     {
       responseCode: result.responseCode,
       duration: performance.now() - startedAt,
     },
-    "Delivery result saved",
+    "Delivery attempt failed",
   )
-  return { kind: "delivered" }
+
+  if (!result.shouldRetry) return { kind: "permanent-failure" }
+  if (maxAttemptsReached) return { kind: "max-attempts-reached" }
+
+  return { kind: "retryable-failure", failedAttemptsCount }
 }

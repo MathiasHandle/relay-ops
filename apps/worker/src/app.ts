@@ -6,6 +6,7 @@ import {
 } from "@relay-ops/backend-shared/queue"
 import { env } from "@/config/env"
 import { startDeliveryConsumer } from "./modules/delivery/delivery.consumer"
+import { createRetryPublisher } from "./modules/delivery/delivery-retry.publisher"
 
 type BuildAppOptions = {
   logger: boolean
@@ -22,9 +23,15 @@ export const buildApp = async (options: BuildAppOptions) => {
   })
 
   const { channel: deliveryChannel } = await assertDeliveryTopology({ channel })
+  const retryPublisher = createRetryPublisher({ channel })
+
+  // at most one unacknowledged message at a time per consumer
+  await channel.prefetch(1)
+
   const { consumerTag } = await startDeliveryConsumer({
     channel: deliveryChannel,
     logger: app.log,
+    retryPublisher,
   })
 
   app.addHook("onClose", async () => {

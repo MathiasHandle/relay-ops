@@ -16,6 +16,14 @@ export async function findDelivery(params: DeliveryIdParams) {
       eventId: true,
       destination: { select: { url: true, enabled: true, deletedAt: true } },
       event: { select: { externalId: true, name: true, payload: true } },
+      // failed attempts count - used for max attempts check and DLQ routing
+      _count: {
+        select: {
+          deliveryAttempts: {
+            where: { status: "FAILED" },
+          },
+        },
+      },
     },
   })
 }

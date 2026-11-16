@@ -6,9 +6,10 @@ frontend.
 ## Public API (subpath exports only, from `dist/`)
 
 - `./queue` (deps: `amqplib`, `zod`):
-  - `connectQueue({ url, logger })`: AMQP connection with an error listener + one channel.
-  - `DELIVERY_TOPOLOGY` and `assertDeliveryTopology({ channel })`: delivery exchange,
-    queue and binding; called by both producer (server) and consumer (worker).
+  - `connectQueue({ url, logger })`: AMQP connection and confirm channel, each with an error listener.
+  - `DELIVERY_TOPOLOGY`, `MAX_DELIVERY_ATTEMPTS` and `assertDeliveryTopology({ channel })`:
+    process, TTL retry and dead-letter exchanges/queues with their bindings; used by the
+    producer (server) and consumer (worker).
   - `deliveryJobSchema`, `DeliveryJob`: job message `{ deliveryId }`.
 
 ## Rules

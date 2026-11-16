@@ -7,19 +7,21 @@ import { processDelivery } from "./delivery.service"
 
 import type { Channel } from "amqplib"
 import type { FastifyBaseLogger } from "fastify"
+import type { createRetryPublisher } from "./delivery-retry.publisher"
 
 type StartDeliveryConsumerParams = {
   channel: Pick<Channel, "consume" | "ack" | "nack" | "reject">
   logger: FastifyBaseLogger
+  retryPublisher: ReturnType<typeof createRetryPublisher>
 }
 
 export async function startDeliveryConsumer(
   params: StartDeliveryConsumerParams,
 ) {
-  const { channel, logger: deliveryLogger } = params
+  const { channel, logger: deliveryLogger, retryPublisher } = params
 
   const { consumerTag } = await channel.consume(
-    DELIVERY_TOPOLOGY.queue,
+    DELIVERY_TOPOLOGY.process.queue,
     async (message) => {
       deliveryLogger.debug("delivery job received")
       // null = the broker cancelled the consumer (e.g. the queue was deleted)
@@ -46,26 +48,41 @@ export async function startDeliveryConsumer(
 
         switch (result.kind) {
           case "delivered":
-          case "already-finished":
+          case "already-delivered":
             channel.ack(message)
             return
 
           case "not-found":
           case "destination-disabled":
+          case "permanent-failure":
+          case "max-attempts-reached":
+          case "already-failed":
             logger.warn({ outcome: result.kind }, "Delivery job rejected")
             channel.reject(message, false)
             return
 
-          case "attempt-failed":
-            // TODO retries + backoff + DLQ
-            channel.nack(message, false, true)
+          case "retryable-failure": {
+            const retryQueue =
+              DELIVERY_TOPOLOGY.retry.queues[result.failedAttemptsCount - 1]
+            if (!retryQueue) throw new Error("Retry queue not configured")
+
+            await retryPublisher.publish({
+              content: message.content,
+              routingKey: retryQueue.routingKey,
+            })
+            channel.ack(message)
             return
+          }
         }
-      } catch {
-        logger.error("Delivery processing failed; job will be requeued")
+      } catch (error) {
+        logger.error(
+          { err: error },
+          "Delivery processing failed; job will be requeued",
+        )
         channel.nack(message, false, true)
       }
     },
+    { noAck: false },
   )
 
   return { consumerTag }

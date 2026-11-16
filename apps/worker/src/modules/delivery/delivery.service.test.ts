@@ -31,6 +31,7 @@ const activeDelivery = {
     deletedAt: null,
   },
   event: { externalId: "external-1", name: "test", payload: {} },
+  _count: { deliveryAttempts: 0 },
 }
 
 beforeEach(() => {
@@ -47,6 +48,54 @@ afterEach(() => {
 })
 
 describe("processDelivery", () => {
+  it.each([408, 429, 500, 503, 599])(
+    "returns a retryable failure for HTTP %i",
+    async (status) => {
+      mocks.fetch.mockResolvedValue(new Response(null, { status }))
+
+      await expect(processDelivery(params)).resolves.toEqual({
+        kind: "retryable-failure",
+        failedAttemptsCount: 1,
+      })
+      expect(mocks.finish).toHaveBeenCalledOnce()
+      expect(mocks.transaction).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { status: 400, count: 0, kind: "permanent-failure" },
+    { status: 503, count: 3, kind: "max-attempts-reached" },
+  ] as const)(
+    "finishes the delivery for $kind",
+    async ({ status, count, kind }) => {
+      const finish = vi.fn()
+      const update = vi.fn()
+      mocks.find.mockResolvedValue({
+        ...activeDelivery,
+        _count: { deliveryAttempts: count },
+      })
+      mocks.fetch.mockResolvedValue(new Response(null, { status }))
+      mocks.transaction.mockImplementation(async (callback) =>
+        callback({ deliveryAttempt: { update: finish }, delivery: { update } }),
+      )
+
+      await expect(processDelivery(params)).resolves.toEqual({ kind })
+      expect(finish).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "FAILED",
+            responseCode: status,
+          }),
+        }),
+      )
+      expect(update).toHaveBeenCalledExactlyOnceWith({
+        where: { id: params.deliveryId },
+        data: { status: "FAILED" },
+      })
+      expect(mocks.finish).not.toHaveBeenCalled()
+    },
+  )
+
   it("propagates unexpected request setup errors without failing the attempt", async () => {
     const error = new Error("Unexpected setup error")
     vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {

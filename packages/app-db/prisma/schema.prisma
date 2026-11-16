@@ -87,7 +87,7 @@ enum EventDeliveryStatus {
   PROCESSING
   FAILED
   DELIVERED
-  RETRY_SCHEDULED
+  RETRY_SCHEDULED // currently unused
 }
 
 model Delivery {
