@@ -11,6 +11,11 @@ import type { ClientScope } from "@relay-ops/contracts"
 import type { FastifyBaseLogger } from "fastify"
 import type { SigningKey } from "@/modules/keys"
 
+// used to prevent timing attack
+const DUMMY_HASH =
+  "$argon2id$v=19$m=65536,t=3,p=4$dzRNTHdVQTQyWkNON2h6TA$BPlTSPdTcEKxf4TykssxYg"
+const DUMMY_SECRET = "111111"
+
 async function verifyClientSecret(secret: string, hash: string) {
   const isValid = await argon2.verify(hash, secret)
   return isValid
@@ -51,23 +56,21 @@ export class OAuth2Model implements OAuth2Server.ClientCredentialsModel {
       },
     })
     if (!client) {
+      await verifyClientSecret(clientSecret || DUMMY_SECRET, DUMMY_HASH)
       this.logger.info({ clientId }, "client  not found")
       return false
     }
 
     // check if client is enabled
     if (!client.enabled) {
+      await verifyClientSecret(clientSecret || DUMMY_SECRET, DUMMY_HASH)
       this.logger.info({ clientId }, "client  is not enabled")
       return false
     }
 
-    // check that client provided secret, if not ver ify dummy secret to prevent timing attack
+    // check that client provided secret
     if (!clientSecret) {
       this.logger.info({ clientId }, "no secret provided for client ")
-      const DUMMY_SECRET = "111111"
-      const DUMMY_HASH =
-        "$argon2id$v=19$m=65536,t=3,p=4$dzRNTHdVQTQyWkNON2h6TA$BPlTSPdTcEKxf4TykssxYg"
-
       await verifyClientSecret(DUMMY_SECRET, DUMMY_HASH)
       return false
     }
