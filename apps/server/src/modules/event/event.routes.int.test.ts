@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { prisma } from "@relay-ops/app-db"
 import { CLIENT_SCOPES, DELIVERY_STATUS } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
@@ -17,14 +17,14 @@ let app: Awaited<ReturnType<typeof buildApp>>
 // Shared by all tests: assert only on jobs of the deliveries a test created.
 const deliveryPublisher = createFakeDeliveryPublisher()
 
-beforeAll(async () => {
+beforeEach(async () => {
   app = await buildApp({
     logger: false,
     deliveryPublisher: deliveryPublisher.publisher,
   })
 })
 
-afterAll(async () => {
+afterEach(async () => {
   await app.close()
 })
 

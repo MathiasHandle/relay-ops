@@ -58,6 +58,7 @@ export const eventRoutes: FastifyPluginAsyncZod<EventRoutesOptions> = async (
   fastify.route({
     method: "POST",
     url: "/events",
+    bodyLimit: 64 * 1024, // 64 KiB in bytes
     onRequest: requireScopes([CLIENT_SCOPES.EVENTS_WRITE]),
     schema: {
       tags: ["events"],

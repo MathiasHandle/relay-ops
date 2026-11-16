@@ -10,6 +10,9 @@ const envSchema = z.object({
   JWT_AUDIENCE: z.string().min(1),
 
   RABBITMQ_URL: z.url(),
+
+  MAX_REQUESTS: z.coerce.number().int().positive().default(60),
+  MAX_REQUEST_TIME_WINDOW_MS: z.coerce.number().int().min(1000).default(60_000),
 })
 
 export const env = envSchema.parse(process.env)

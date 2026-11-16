@@ -24,6 +24,7 @@ export const oauthRoutes: FastifyPluginAsyncZod<OAuthModuleOptions> = async (
   fastify.route({
     method: "POST",
     url: "/token",
+    bodyLimit: 4 * 1024, // 4 KiB
     schema: {
       response: {
         200: tokenResponseSchema,

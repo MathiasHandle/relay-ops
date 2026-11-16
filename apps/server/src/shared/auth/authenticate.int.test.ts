@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { generateKeyPair, SignJWT } from "jose"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { env } from "@/config/env"
@@ -14,14 +14,17 @@ let app: Awaited<ReturnType<typeof buildApp>>
 let tenant: Awaited<ReturnType<typeof createTestTenant>>
 
 beforeAll(async () => {
+  tenant = await createTestTenant()
+})
+
+beforeEach(async () => {
   app = await buildApp({
     logger: false,
     deliveryPublisher: createFakeDeliveryPublisher().publisher,
   })
-  tenant = await createTestTenant()
 })
 
-afterAll(async () => {
+afterEach(async () => {
   await app.close()
 })
 

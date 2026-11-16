@@ -1,5 +1,6 @@
 import cors from "@fastify/cors"
 import formbody from "@fastify/formbody"
+import rateLimit from "@fastify/rate-limit"
 import Fastify from "fastify"
 import {
   serializerCompiler,
@@ -24,17 +25,32 @@ export const buildApp = async ({ logger }: BuildAppOptions) => {
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 
-  // Default error/404 handlers for all routes. Set before plugins so they inherit
-  // them; plugins may override the error handler with their own.
+  // Default error handler for all routes; plugins may override it.
   app.setErrorHandler(errorHandler)
-  app.setNotFoundHandler(notFoundHandler)
 
   await app.register(cors, {
     origin: ["https://hoppscotch.io"],
+    exposedHeaders: [
+      "x-ratelimit-limit",
+      "x-ratelimit-remaining",
+      "x-ratelimit-reset",
+      "retry-after",
+    ],
   })
 
   // Parse application/x-www-form-urlencoded bodies (required by OAuth /token).
   await app.register(formbody)
+
+  await app.register(rateLimit, {
+    max: env.MAX_REQUESTS,
+    timeWindow: env.MAX_REQUEST_TIME_WINDOW_MS,
+  })
+
+  // separate per-IP rate limit for unknown routes
+  app.setNotFoundHandler(
+    { preHandler: app.rateLimit({ max: 10, timeWindow: 60_000 }) },
+    notFoundHandler,
+  )
 
   app.addHook("onClose", async () => {
     await prisma.$disconnect()

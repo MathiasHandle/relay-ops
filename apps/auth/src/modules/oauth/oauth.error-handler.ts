@@ -19,6 +19,14 @@ export const oauthErrorHandler = (
     error.statusCode < 500
   if (!isClientError) throw error
 
+  // rate limiting & payload size
+  if (error.statusCode === 413 || error.statusCode === 429) {
+    return reply.code(error.statusCode).send({
+      error: "invalid_request",
+      error_description: error.message,
+    })
+  }
+
   // OAuthError from oauth2-server
   if (error instanceof OAuthError && error.code < 500) {
     const code = z.enum(OAUTH_ERROR_CODES).safeParse(error.name)

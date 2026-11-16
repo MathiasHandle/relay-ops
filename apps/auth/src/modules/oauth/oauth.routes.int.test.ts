@@ -1,5 +1,5 @@
 import { createLocalJWKSet, jwtVerify } from "jose"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { env } from "@/config/env"
@@ -19,14 +19,17 @@ let readClient: TestClient
 let readWriteClient: TestClient
 
 beforeAll(async () => {
-  app = await buildApp({ logger: false })
   readClient = await createTestClient()
   readWriteClient = await createTestClient({
     allowedScopes: [CLIENT_SCOPES.EVENTS_READ, CLIENT_SCOPES.EVENTS_WRITE],
   })
 })
 
-afterAll(async () => {
+beforeEach(async () => {
+  app = await buildApp({ logger: false })
+})
+
+afterEach(async () => {
   await app.close()
 })
 
