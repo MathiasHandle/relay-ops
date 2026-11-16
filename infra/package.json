@@ -1,0 +1,30 @@
+{
+  "name": "@relay-ops/infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:ts": "tsc --noEmit",
+    "check:lint": "eslint .",
+    "fix:lint": "eslint . --fix",
+    "check:format": "prettier --check .",
+    "fix:format": "prettier --write ."
+  },
+  "prettier": "@relay-ops/prettier-config",
+  "dependencies": {
+    "cdk8s": "^2.70.124",
+    "cdk8s-plus-32": "^2.5.105",
+    "constructs": "^10.8.1"
+  },
+  "devDependencies": {
+    "@relay-ops/eslint-config": "workspace:*",
+    "@relay-ops/prettier-config": "workspace:*",
+    "@relay-ops/tsconfig": "workspace:*",
+    "@types/node": "^24.19.2",
+    "cdk8s-cli": "^2.207.84",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}
