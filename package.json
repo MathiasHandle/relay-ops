@@ -22,5 +22,5 @@
   "devDependencies": {
     "turbo": "^2.11.10"
   },
-  "packageManager": "pnpm@10.31.0"
+  "packageManager": "pnpm@12.21.0"
 }

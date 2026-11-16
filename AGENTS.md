@@ -40,7 +40,7 @@ HTTP API), `apps/mcp`, `infra/` (Kubernetes).
 
 ## Tooling
 
-- pnpm 10 workspaces + Turborepo, Node 24, ESM everywhere.
+- pnpm 12 workspaces + Turborepo, Node 24, ESM everywhere.
 - TypeScript 6 (`moduleResolution: "Bundler"`, `verbatimModuleSyntax`): `tsc` only
   type-checks (`noEmit`). Apps and `packages/app-db` are built with tsdown into `dist/`.
 - Imports without file extensions. Alias `@/` → `src/` (tsconfig `paths`, per app;
