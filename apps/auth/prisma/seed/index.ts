@@ -3,7 +3,7 @@ import { prisma } from "@/shared/db/prisma"
 
 import type { Prisma } from "../.generated/client"
 
-const oAuthClients: Prisma.OAuthClientCreateManyInput[] = [
+const oAuthClients: (Prisma.OAuthClientCreateInput & { id: string })[] = [
   {
     id: "vkecyh9v4rev5devm2yqn0fi",
     name: "acme-app",
@@ -41,9 +41,13 @@ const oAuthClients: Prisma.OAuthClientCreateManyInput[] = [
 ]
 
 async function seed() {
-  await prisma.oAuthClient.createMany({
-    data: oAuthClients,
-  })
+  for (const client of oAuthClients) {
+    await prisma.oAuthClient.upsert({
+      where: { id: client.id },
+      create: client,
+      update: {},
+    })
+  }
 }
 
 async function seedDatabase() {

@@ -15,7 +15,7 @@ RUN pnpm build:packages
 RUN pnpm build
 
 # Deploy Auth with only its production dependencies and required workspace packages
-RUN pnpm --filter auth --prod deploy --ignore-scripts /out
+RUN pnpm --filter auth --prod deploy /out
 RUN cp -a /packages/contracts/dist /out/node_modules/@relay-ops/contracts/dist
 
 

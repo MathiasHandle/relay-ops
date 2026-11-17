@@ -1,10 +1,18 @@
 import { rmSync } from "node:fs"
 import path from "node:path"
 import { Command, InvalidArgumentError } from "commander"
+import { renderAuth } from "./apps/auth/render"
+import { renderAuthDb } from "./apps/auth-db/render"
 
 import type { Env } from "./env"
 
-const charts: Record<string, (env: Env) => void> = {}
+const charts = {
+  // local only charts
+  authDb: renderAuthDb,
+
+  // production charts
+  authApp: renderAuth,
+}
 
 function main(env: Env) {
   // remove stale manifests for this environment before generating new ones

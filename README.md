@@ -47,8 +47,9 @@ Auth and the app use two separate PostgreSQL instances. They never share credent
 ## Getting started
 
 ```bash
-# 1. Install dependencies (also generates the Prisma clients)
+# 1. Install dependencies and generate the Prisma clients
 pnpm install
+pnpm turbo run db:generate
 
 # 2. Create local env files from the examples
 cp apps/auth/.env.example apps/auth/.env
