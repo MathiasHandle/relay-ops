@@ -5,6 +5,7 @@ import { renderAppDb } from "./apps/app-db/render"
 import { renderAuth } from "./apps/auth/render"
 import { renderAuthDb } from "./apps/auth-db/render"
 import { renderServer } from "./apps/server/render"
+import { renderWorker } from "./apps/worker/render"
 
 import type { Env } from "./env"
 
@@ -16,6 +17,7 @@ const charts = {
   // production charts
   authApp: renderAuth,
   server: renderServer,
+  worker: renderWorker,
 }
 
 function main(env: Env) {
