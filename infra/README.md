@@ -1,6 +1,6 @@
 # Local Kubernetes
 
-Run from the repository root with dependencies installed, Docker, k3d, kubectl and OpenSSL available. PostgreSQL runs locally; production databases will use Neon.
+Run from the repository root with dependencies installed, Docker, k3d, kubectl and OpenSSL available. PostgreSQL runs locally; production databases will use Neon. The RabbitMQ chart is still pending: Server needs a reachable broker.
 
 ## 1. Cluster and Secrets
 
@@ -21,6 +21,7 @@ Prepare these env files in that directory:
 | `auth-env-variables.env`           | `AUTH_DATABASE_URL`, `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_PRIVATE_KEY_PATH=/app/keys/private.pem` |
 | `app-db-migration-credentials.env` | `APP_DATABASE_URL` for migrations                                                               |
 | `app-db-seed-env-variables.env`    | `APP_DATABASE_URL`, `JWT_ISSUER`                                                                |
+| `server-env-variables.env`         | `APP_DATABASE_URL`, `RABBITMQ_URL`, `AUTH_JWKS_URL`, `JWT_ISSUER`, `JWT_AUDIENCE`               |
 
 Use these cluster addresses, not `localhost`, in connection URLs:
 
@@ -28,14 +29,15 @@ Use these cluster addresses, not `localhost`, in connection URLs:
 - App DB: `app-db-service-c84b73b0:5432/relay_ops_app`.
 - JWKS: `http://auth-service-c8168b25:3002/.well-known/jwks.json`.
 
-Database URLs must match the PostgreSQL credentials; percent-encode URL credentials. Use `JWT_ISSUER=http://localhost:3002` for local development and leave `PORT` unset. Keep `JWT_ISSUER` identical in Auth and the App DB seed.
+Database URLs must match the PostgreSQL credentials; percent-encode URL credentials. Use `JWT_ISSUER=http://localhost:3002` for local development and leave `PORT` unset. Keep `JWT_ISSUER` identical in Auth and the App DB seed. Server must use the same issuer and audience as Auth. Include the vhost in the cluster-reachable `RABBITMQ_URL`.
 
 ```sh
 openssl genpkey -algorithm ED25519 -out "$RELAY_OPS_ENV_DIR/private.pem"
 chmod 600 "$RELAY_OPS_ENV_DIR/private.pem"
 kubectl create secret generic auth-jwt-key -n relay-ops --from-file=private.pem="$RELAY_OPS_ENV_DIR/private.pem"
 for name in auth-db-env-variables auth-db-credentials auth-env-variables \
-  app-db-env-variables app-db-migration-credentials app-db-seed-env-variables; do
+  app-db-env-variables app-db-migration-credentials app-db-seed-env-variables \
+  server-env-variables; do
   kubectl create secret generic "$name" -n relay-ops --from-env-file="$RELAY_OPS_ENV_DIR/$name.env"
 done
 ```
@@ -46,9 +48,11 @@ done
 docker build -f apps/auth/Dockerfile -t relay-ops-auth:local .
 docker build -f apps/auth/Dockerfile --target build -t relay-ops-auth-seed:local .
 docker build -f packages/app-db/Dockerfile -t relay-ops-app-db:local .
+docker build -f apps/server/Dockerfile -t relay-ops-server:local .
 k3d image import -c relay-ops relay-ops-auth:local \
   relay-ops-auth-seed:local \
-  relay-ops-app-db:local
+  relay-ops-app-db:local \
+  relay-ops-server:local
 ```
 
 ## 3. Databases
@@ -80,15 +84,19 @@ kubectl wait -n relay-ops --for=condition=complete --timeout=90s \
 
 ## 5. Applications and access
 
+With RabbitMQ available:
+
 ```sh
-kubectl apply -f infra/dist/local/auth/Service.*.yaml -f infra/dist/local/auth/Deployment.*.yaml
+kubectl apply -f infra/dist/local/auth/Service.*.yaml -f infra/dist/local/auth/Deployment.*.yaml -f infra/dist/local/server/
 kubectl rollout status deployment/auth-deployment-c8168b25 -n relay-ops
+kubectl rollout status deployment/server-deployment-c8f6431d -n relay-ops
 ```
 
 Run each port-forward in a separate terminal:
 
 ```sh
 kubectl port-forward -n relay-ops service/auth-service-c8168b25 3002:3002
+kubectl port-forward -n relay-ops service/server-service-c8f6431d 3001:3001
 ```
 
 ## Notes
