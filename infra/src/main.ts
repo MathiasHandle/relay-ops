@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs"
 import path from "node:path"
 import { Command, InvalidArgumentError } from "commander"
+import { renderAppDb } from "./apps/app-db/render"
 import { renderAuth } from "./apps/auth/render"
 import { renderAuthDb } from "./apps/auth-db/render"
 
@@ -9,6 +10,7 @@ import type { Env } from "./env"
 const charts = {
   // local only charts
   authDb: renderAuthDb,
+  appDb: renderAppDb,
 
   // production charts
   authApp: renderAuth,

@@ -1,9 +1,13 @@
+import { z } from "zod"
 import { prisma } from "../../src/client"
 
 import type { Prisma } from "../../src/generated/prisma/client"
 
 // Must match JWT_ISSUER of apps/auth in local dev (`iss` claim).
-const DEV_ISSUER = "http://localhost:3002"
+const DEV_ISSUER = z
+  .url()
+  .default("http://localhost:3002")
+  .parse(process.env["JWT_ISSUER"])
 
 // Must match `OAuthClient.id` in the apps/auth seed (`sub` claim).
 const AUTH_CLIENT_IDS = {
@@ -83,9 +87,47 @@ const destinations: Prisma.DestinationCreateManyInput[] = [
 ]
 
 async function seed() {
-  await prisma.organization.createMany({ data: organizations })
-  await prisma.oAuthIdentity.createMany({ data: oauthIdentities })
-  await prisma.destination.createMany({ data: destinations })
+  await prisma.$transaction(async (tx) => {
+    for (const organization of organizations) {
+      const existing = await tx.organization.upsert({
+        where: { id: organization.id },
+        create: organization,
+        update: {},
+      })
+      if (existing.name !== organization.name) {
+        throw new Error(
+          "Seed organization ID belongs to a different organization",
+        )
+      }
+    }
+
+    for (const identity of oauthIdentities) {
+      const existing = await tx.oAuthIdentity.upsert({
+        where: {
+          issuer_subject: {
+            issuer: identity.issuer,
+            subject: identity.subject,
+          },
+        },
+        create: identity,
+        update: {},
+      })
+      if (existing.organizationId !== identity.organizationId) {
+        throw new Error("Seed identity belongs to a different organization")
+      }
+    }
+
+    for (const destination of destinations) {
+      const existing = await tx.destination.upsert({
+        where: { id: destination.id },
+        create: destination,
+        update: {},
+      })
+      if (existing.organizationId !== destination.organizationId) {
+        throw new Error("Seed destination belongs to a different organization")
+      }
+    }
+  })
 }
 
 async function seedDatabase() {
