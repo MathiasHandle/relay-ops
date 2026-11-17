@@ -8,12 +8,14 @@
     "check:lint": "eslint .",
     "fix:lint": "eslint . --fix",
     "check:format": "prettier --check .",
-    "fix:format": "prettier --write ."
+    "fix:format": "prettier --write .",
+    "synth": "tsx src/main.ts"
   },
   "prettier": "@relay-ops/prettier-config",
   "dependencies": {
     "cdk8s": "^2.70.124",
     "cdk8s-plus-32": "^2.5.105",
+    "commander": "^15.1.0",
     "constructs": "^10.8.1"
   },
   "devDependencies": {

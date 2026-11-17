@@ -124,6 +124,7 @@ Modular monolith, modules by feature:
 
 ## Working rules
 
+- README files: keep them short, factual, and easy to follow. Prefer copy-paste-ready commands. Include essential context, prerequisites, configuration, and execution order; brevity must not come at the expense of basic information.
 - Mentoring and review rules: follow "Pokyny pre mentora a code review" in `roadmap.md`.
 - Implement only what was asked. No unrequested features, logic or refactors; propose them instead.
 - Plans: present the plan for approval first, implement only after explicit approval.

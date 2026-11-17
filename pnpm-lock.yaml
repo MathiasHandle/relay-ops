@@ -391,6 +391,9 @@ importers:
       cdk8s-plus-32:
         specifier: ^2.5.105
         version: 2.5.105(cdk8s@2.70.124(constructs@10.8.1))(constructs@10.8.1)
+      commander:
+        specifier: ^15.1.0
+        version: 15.1.0
       constructs:
         specifier: ^10.8.1
         version: 10.8.1
@@ -1881,6 +1884,10 @@ packages:
   colors@1.4.0:
     resolution: {integrity: sha512-a+UqTh4kgZg/SlGvfbzDHpgRu7AAQOmmqRHJnxhRZICKFUT91brVhNNt58CMWU9PsBbv3PDCZUHbVxuDiH2mtA==}
     engines: {node: '>=0.1.90'}
+
+  commander@15.1.0:
+    resolution: {integrity: sha512-cgnQ88TRrWcC7pVq46RzJVRMktu3W2RcbnoidnfBsl1bmDCBwJS/udcIZpKoCrbAYYaCqsz1yZCVIgbIaU3ddQ==}
+    engines: {node: '>=22.12.0'}
 
   comment-parser@1.4.9:
     resolution: {integrity: sha512-+2AvZKjJaNq9GQljm3tr0utwrig5BL+jgJGvz5rDpGKNIp+ojcRXWUwBbh/sGIi1QCprR6PsKFakub+w1v+4hQ==}
@@ -4810,6 +4817,8 @@ snapshots:
   color-name@1.1.4: {}
 
   colors@1.4.0: {}
+
+  commander@15.1.0: {}
 
   comment-parser@1.4.9: {}
 
