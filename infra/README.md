@@ -1,17 +1,19 @@
 # Local Kubernetes
 
-Run from the repository root with dependencies installed, Docker, k3d, kubectl and OpenSSL available. PostgreSQL runs locally; production databases will use Neon. The RabbitMQ chart is still pending: Server and Worker need a reachable broker.
+Run from the repository root with dependencies installed, Docker, k3d, kubectl and OpenSSL available. PostgreSQL runs locally; production databases will use Neon. This procedure is for a new cluster: if `relay-ops` already exists, reuse its credentials and key; never regenerate or overwrite them against existing data.
 
 ## 1. Cluster and Secrets
 
 ```sh
-k3d cluster create relay-ops
+k3d cluster create relay-ops --image rancher/k3s:v1.35.5-k3s1
+kubectl config current-context # must be k3d-relay-ops
 kubectl create namespace relay-ops
 RELAY_OPS_ENV_DIR="$HOME/.config/relay-ops"
-mkdir -p "$RELAY_OPS_ENV_DIR"
+umask 077
+mkdir -p -m 700 "$RELAY_OPS_ENV_DIR"
 ```
 
-Prepare these env files in that directory:
+Prepare the following files as `KEY=value` lines without quotes. For a new local cluster, use the development values from `apps/auth/.env.example`, `apps/server/.env.example`, `apps/worker/.env.example` and `compose.yaml`. These are known development credentials; do not use them in production or expose the cluster publicly. Do not commit the env files or signing key.
 
 | File                               | Variables                                                                                       |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -23,17 +25,21 @@ Prepare these env files in that directory:
 | `app-db-seed-env-variables.env`    | `APP_DATABASE_URL`, `JWT_ISSUER`                                                                |
 | `server-env-variables.env`         | `APP_DATABASE_URL`, `RABBITMQ_URL`, `AUTH_JWKS_URL`, `JWT_ISSUER`, `JWT_AUDIENCE`               |
 | `worker-env-variables.env`         | `APP_DATABASE_URL`, `RABBITMQ_URL`                                                              |
+| `rabbitmq-app-credentials.env`     | `username`, `password` for the RabbitMQ application user                                        |
 
 Use these cluster addresses, not `localhost`, in connection URLs:
 
-- Auth DB: `auth-db-service-c877ff9e:5432/relay_ops_auth`.
-- App DB: `app-db-service-c84b73b0:5432/relay_ops_app`.
-- JWKS: `http://auth-service-c8168b25:3002/.well-known/jwks.json`.
+- Auth DB: `auth-db:5432/relay_ops_auth`.
+- App DB: `app-db:5432/relay_ops_app`.
+- JWKS: `http://auth:3002/.well-known/jwks.json`.
+- RabbitMQ: `rabbitmq:5672/relay-ops`.
 
-Database URLs must match the PostgreSQL credentials; percent-encode URL credentials. Keep `JWT_ISSUER` identical in Auth, Server and the seed (locally, `http://localhost:3002` works). Auth and Server must share `JWT_AUDIENCE`. Leave `PORT` unset. Include the vhost in the cluster-reachable `RABBITMQ_URL`.
+Use the matching database usernames, passwords and names from `compose.yaml`. Use the RabbitMQ application credentials from the Server or Worker example both in `rabbitmq-app-credentials.env` and in their `RABBITMQ_URL`. Preserve URL credentials, database names, vhost and query parameters while replacing the host and port with the cluster addresses above. Use the examples' JWT issuer and audience consistently; unlike the JWKS URL, the issuer is not a cluster Service address. Set the key path as shown in the table and leave `PORT` unset.
+
+Keep this directory for subsequent runs: PostgreSQL initializes credentials only on empty storage, and the Job does not rotate an existing RabbitMQ user's password.
 
 ```sh
-openssl genpkey -algorithm ED25519 -out "$RELAY_OPS_ENV_DIR/private.pem"
+test -f "$RELAY_OPS_ENV_DIR/private.pem" || openssl genpkey -algorithm ED25519 -out "$RELAY_OPS_ENV_DIR/private.pem"
 chmod 600 "$RELAY_OPS_ENV_DIR/private.pem"
 kubectl create secret generic auth-jwt-key -n relay-ops --from-file=private.pem="$RELAY_OPS_ENV_DIR/private.pem"
 for name in auth-db-env-variables app-db-env-variables auth-db-credentials \
@@ -41,7 +47,11 @@ for name in auth-db-env-variables app-db-env-variables auth-db-credentials \
   server-env-variables worker-env-variables; do
   kubectl create secret generic "$name" -n relay-ops --from-env-file="$RELAY_OPS_ENV_DIR/$name.env"
 done
+kubectl create secret generic rabbitmq-app-credentials -n relay-ops \
+  --from-env-file="$RELAY_OPS_ENV_DIR/rabbitmq-app-credentials.env"
 ```
+
+The setup Job creates the example RabbitMQ application user without management tags. It is separate from the operator-generated administrator account.
 
 ## 2. Build and import images
 
@@ -84,7 +94,25 @@ kubectl wait -n relay-ops --for=condition=complete --timeout=90s \
 
 ## 5. Applications and access
 
-With RabbitMQ available:
+Install cert-manager and the RabbitMQ Cluster Operator before applying the RabbitMQ chart. These versions require a compatible Kubernetes version:
+
+```sh
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.20.4/cert-manager.yaml
+kubectl rollout status deployment/cert-manager -n cert-manager
+kubectl rollout status deployment/cert-manager-cainjector -n cert-manager
+kubectl rollout status deployment/cert-manager-webhook -n cert-manager
+kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/download/v2.23.3/cluster-operator.yml
+kubectl rollout status deployment/rabbitmq-cluster-operator -n rabbitmq-system
+kubectl apply -f infra/dist/local/rabbitmq/
+kubectl wait -n relay-ops --for=condition=AllReplicasReady --timeout=180s rabbitmqcluster/rabbitmq
+kubectl apply -f infra/dist/local/rabbitmq-setup/ConfigMap.*.yaml
+kubectl create -f infra/dist/local/rabbitmq-setup/Job.*.yaml
+kubectl wait -n relay-ops --for=condition=complete --timeout=240s -f infra/dist/local/rabbitmq-setup/Job.*.yaml
+```
+
+The Job creates the vhost and application user when absent, sets permissions and checks an AMQP connection. It does not change an existing user's password. If the Secret does not match an existing user, the Job fails; credential rotation is a separate operation. Wait for the Job to succeed before starting the applications.
+
+Then start the applications:
 
 ```sh
 kubectl apply -f infra/dist/local/auth/Service.*.yaml -f infra/dist/local/auth/Deployment.*.yaml \
@@ -97,8 +125,8 @@ kubectl rollout status deployment/worker-deployment-c8f5585d -n relay-ops
 Run each port-forward in a separate terminal:
 
 ```sh
-kubectl port-forward -n relay-ops service/auth-service-c8168b25 3002:3002
-kubectl port-forward -n relay-ops service/server-service-c8f6431d 3001:3001
+kubectl port-forward -n relay-ops service/auth 3002:3002
+kubectl port-forward -n relay-ops service/server 3001:3001
 ```
 
 ## Notes

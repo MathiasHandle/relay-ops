@@ -17,6 +17,8 @@ function createRetryQueues() {
   })
 }
 
+// When adding or changing queue or exchange names, check the setup Job permissions
+// in infra/src/apps/rabbitmq/setup.mjs; keep new topologies in sync as well.
 export const DELIVERY_TOPOLOGY = {
   process: {
     exchange: "deliveries",

@@ -68,7 +68,7 @@ export class AppDbChart extends Chart {
     })
 
     deployment.exposeViaService({
-      name: deployment.name.replace("deployment", "service"),
+      name: AppDb.appName,
     })
   }
 }

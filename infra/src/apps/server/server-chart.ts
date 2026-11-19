@@ -50,7 +50,7 @@ export class ServerChart extends Chart {
     })
 
     deployment.exposeViaService({
-      name: deployment.name.replace("deployment", "service"),
+      name: Server.appName,
     })
   }
 }

@@ -72,7 +72,7 @@ export class AuthDbChart extends Chart {
     })
 
     deployment.exposeViaService({
-      name: deployment.name.replace("deployment", "service"),
+      name: AuthDb.appName,
     })
   }
 }

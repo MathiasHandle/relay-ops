@@ -4,6 +4,7 @@ import { Command, InvalidArgumentError } from "commander"
 import { renderAppDb } from "./apps/app-db/render"
 import { renderAuth } from "./apps/auth/render"
 import { renderAuthDb } from "./apps/auth-db/render"
+import { renderRabbitMQ } from "./apps/rabbitmq/render"
 import { renderServer } from "./apps/server/render"
 import { renderWorker } from "./apps/worker/render"
 
@@ -18,6 +19,7 @@ const charts = {
   authApp: renderAuth,
   server: renderServer,
   worker: renderWorker,
+  rabbitMQ: renderRabbitMQ,
 }
 
 function main(env: Env) {

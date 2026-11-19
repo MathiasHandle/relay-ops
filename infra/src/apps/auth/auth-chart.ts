@@ -101,7 +101,7 @@ export class AuthChart extends Chart {
     })
 
     deployment.exposeViaService({
-      name: deployment.name.replace("deployment", "service"),
+      name: Auth.appName,
     })
   }
 }
