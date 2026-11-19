@@ -2,7 +2,7 @@
 
 Event relay platform: machine clients authenticate against a custom JWT issuer, submit events over a REST API, and a worker delivers them to external HTTP destinations.
 
-> **Status:** Phase 0 (bootstrap). The apps only expose `GET /health`; auth, event ingestion and delivery are not implemented yet.
+> **Status:** Local Kubernetes MVP in progress. Auth, event ingestion and asynchronous delivery are implemented.
 
 ## Tech stack
 
@@ -18,14 +18,18 @@ relay-ops/
 ├── apps/
 │   ├── auth/               # JWT issuer, owns its own database (relay_ops_auth)
 │   │   └── prisma/         # auth schema + migrations
-│   └── server/             # REST API, uses the app database via @relay-ops/app-db
+│   ├── server/             # REST API, uses the app database via @relay-ops/app-db
+│   └── worker/             # RabbitMQ consumer and HTTP delivery
 ├── packages/
 │   ├── app-db/             # Prisma schema, migrations and client for the app database (relay_ops_app)
+│   ├── backend-shared/     # shared queue topology and job schema
+│   ├── contracts/          # shared API contracts
 │   └── configs/
 │       ├── eslint/         # @relay-ops/eslint-config
 │       ├── prettier/       # @relay-ops/prettier-config
 │       └── tsconfig/       # @relay-ops/tsconfig
-├── compose.yaml            # local PostgreSQL instances
+├── infra/                  # Kubernetes manifests and local setup
+├── compose.yaml            # local PostgreSQL instances and RabbitMQ
 └── turbo.json
 ```
 
@@ -41,10 +45,15 @@ Auth and the app use two separate PostgreSQL instances. They never share credent
 ## Prerequisites
 
 - Node.js 24 (see `.nvmrc`; pnpm downloads the exact version from `devEngines` automatically)
-- pnpm 10 (`corepack enable` picks the version from `packageManager`)
+- pnpm 12 (`corepack enable` picks the version from `packageManager`)
 - Docker with Docker Compose
+- OpenSSL for the Auth signing key
 
 ## Getting started
+
+For the local Kubernetes setup, see [infra/README.md](infra/README.md).
+
+To run the applications on the host with dependencies in Docker Compose:
 
 ```bash
 # 1. Install dependencies and generate the Prisma clients
@@ -54,18 +63,30 @@ pnpm turbo run db:generate
 # 2. Create local env files from the examples
 cp apps/auth/.env.example apps/auth/.env
 cp apps/server/.env.example apps/server/.env
+cp apps/worker/.env.example apps/worker/.env
 cp packages/app-db/.env.example packages/app-db/.env
 
-# 3. Start both PostgreSQL instances
+# 3. Create the Auth signing key once
+mkdir -p apps/auth/keys
+test -f apps/auth/keys/jwt-private.pem || openssl genpkey -algorithm ED25519 -out apps/auth/keys/jwt-private.pem
+chmod 600 apps/auth/keys/jwt-private.pem
+
+# 4. Start PostgreSQL and RabbitMQ
 docker compose up -d
 
-# 4. Apply database migrations
+# 5. Apply database migrations
 pnpm --filter auth db:migrate
 pnpm --filter @relay-ops/app-db db:migrate
 
-# 5. Start all apps in watch mode
+# 6. Optional: seed local development data
+pnpm --filter auth db:seed
+pnpm --filter @relay-ops/app-db db:seed
+
+# 7. Start all apps in watch mode
 pnpm dev
 ```
+
+The seed uses known development credentials and placeholder destination URLs.
 
 Health checks:
 
@@ -78,28 +99,28 @@ curl http://localhost:3001/health   # server
 
 Run from the repository root; Turborepo executes them in every package that defines them.
 
-| Script                  | Description                                  |
-| ----------------------- | -------------------------------------------- |
-| `pnpm dev`              | Start all apps in watch mode                 |
-| `pnpm build`            | Build all packages and apps                  |
-| `pnpm build:packages`   | Build only the packages in `packages/`       |
-| `pnpm check:ts`         | Type-check                                   |
-| `pnpm check:lint`       | Lint                                         |
-| `pnpm check:format`     | Check formatting                             |
-| `pnpm fix:lint`         | Lint and apply auto-fixes                    |
-| `pnpm fix:format`       | Format files                                 |
-| `pnpm test`             | Run tests                                    |
+| Script                | Description                            |
+| --------------------- | -------------------------------------- |
+| `pnpm dev`            | Start all apps in watch mode           |
+| `pnpm build`          | Build all packages and apps            |
+| `pnpm build:packages` | Build only the packages in `packages/` |
+| `pnpm check:ts`       | Type-check                             |
+| `pnpm check:lint`     | Lint                                   |
+| `pnpm check:format`   | Check formatting                       |
+| `pnpm fix:lint`       | Lint and apply auto-fixes              |
+| `pnpm fix:format`     | Format files                           |
+| `pnpm test`           | Run tests                              |
 
 `check:*` scripts only report problems, `fix:*` scripts write changes.
 
 Database scripts (run with `pnpm --filter <package> <script>` in `apps/auth` or `packages/app-db`):
 
-| Script        | Description                                   |
-| ------------- | --------------------------------------------- |
-| `db:generate` | Generate the Prisma client                    |
-| `db:migrate`  | Create and apply migrations (development)     |
-| `db:deploy`   | Apply existing migrations (CI / production)   |
-| `db:studio`   | Open Prisma Studio                            |
+| Script        | Description                                 |
+| ------------- | ------------------------------------------- |
+| `db:generate` | Generate the Prisma client                  |
+| `db:migrate`  | Create and apply migrations (development)   |
+| `db:deploy`   | Apply existing migrations (CI / production) |
+| `db:studio`   | Open Prisma Studio                          |
 
 ## Conventions
 

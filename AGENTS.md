@@ -22,9 +22,10 @@ App schema: see `packages/app-db`.
 | `packages/contracts`      | Shared contracts (OAuth scopes, API enums, later DTOs). No runtime deps, browser-safe. |                                     |
 | `packages/backend-shared` | Code shared by Node apps (server, worker): queue topology and job schema. Node only.   | `packages/backend-shared/AGENTS.md` |
 | `packages/configs/*`      | Shared ESLint, Prettier and tsconfig (`@relay-ops/*-config`, `@relay-ops/tsconfig`).   |                                     |
+| `infra/`                  | Local Kubernetes manifests and setup using cdk8s.                                      | `infra/AGENTS.md`                   |
 
 Planned, create only when needed: `apps/dashboard` (Next.js, talks only to the server
-HTTP API), `apps/mcp`, `infra/` (Kubernetes).
+HTTP API), `apps/mcp`.
 
 ### Data boundaries (do not break)
 
@@ -51,6 +52,7 @@ HTTP API), `apps/mcp`, `infra/` (Kubernetes).
 - Prisma 7 (`prisma-client` generator, `@prisma/adapter-pg`), Fastify 5, Zod 4, jose.
 - Local dev is hybrid: `docker compose up -d` runs the databases and RabbitMQ (management
   UI at http://localhost:15672, vhost `relay-ops`), apps run on the host via `pnpm dev`.
+- Local Kubernetes uses k3d and cdk8s; see `infra/README.md` for setup and Secrets.
 - Run tasks via Turbo from the root. Prisma client generation is the turbo task
   `db:generate`; `build`, `check:ts` and `check:format` depend on it, the package
   scripts themselves do not generate.
