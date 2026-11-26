@@ -4,6 +4,10 @@ Event relay platform: machine clients authenticate against a custom JWT issuer, 
 
 > **Status:** Local Kubernetes MVP in progress. Auth, event ingestion and asynchronous delivery are implemented.
 
+The server stores each Event, its Deliveries and outbox records in one database transaction. A separate outbox publisher sends delivery jobs to RabbitMQ; a worker then sends HTTP requests to destinations. The publisher waits for broker confirmation, but an uncertain result or a later database failure can cause a job to be published again.
+
+Webhook receivers must handle duplicate deliveries. The worker sends the stable `X-RelayOps-Delivery-Id` header on each attempt for the same Delivery. A receiver can use it to deduplicate requests; retries and failures can result in more than one HTTP request.
+
 ## Tech stack
 
 - [pnpm](https://pnpm.io) workspaces + [Turborepo](https://turborepo.com)
@@ -18,7 +22,7 @@ relay-ops/
 ├── apps/
 │   ├── auth/               # JWT issuer, owns its own database (relay_ops_auth)
 │   │   └── prisma/         # auth schema + migrations
-│   ├── server/             # REST API, uses the app database via @relay-ops/app-db
+│   ├── server/             # REST API and separate outbox publisher process; uses the app database via @relay-ops/app-db
 │   └── worker/             # RabbitMQ consumer and HTTP delivery
 ├── packages/
 │   ├── app-db/             # Prisma schema, migrations and client for the app database (relay_ops_app)
@@ -37,10 +41,10 @@ relay-ops/
 
 Auth and the app use two separate PostgreSQL instances. They never share credentials or tables.
 
-| Service         | Database         | Host port | Env variable        | Used by                          |
-| --------------- | ---------------- | --------- | ------------------- | -------------------------------- |
-| `postgres-auth` | `relay_ops_auth` | `5432`    | `AUTH_DATABASE_URL` | `apps/auth`                      |
-| `postgres-app`  | `relay_ops_app`  | `5433`    | `APP_DATABASE_URL`  | `apps/server`, `packages/app-db` |
+| Service         | Database         | Host port | Env variable        | Used by                                         |
+| --------------- | ---------------- | --------- | ------------------- | ----------------------------------------------- |
+| `postgres-auth` | `relay_ops_auth` | `5432`    | `AUTH_DATABASE_URL` | `apps/auth`                                     |
+| `postgres-app`  | `relay_ops_app`  | `5433`    | `APP_DATABASE_URL`  | `apps/server`, `apps/worker`, `packages/app-db` |
 
 ## Prerequisites
 
@@ -82,11 +86,12 @@ pnpm --filter @relay-ops/app-db db:migrate
 pnpm --filter auth db:seed
 pnpm --filter @relay-ops/app-db db:seed
 
-# 7. Start all apps in watch mode
+# 7. Start all apps and the outbox publisher in watch mode
 pnpm dev
 ```
 
 The seed uses known development credentials and placeholder destination URLs.
+To start only the outbox publisher, run `pnpm --filter server dev:publisher`.
 
 Health checks:
 
@@ -99,19 +104,21 @@ curl http://localhost:3001/health   # server
 
 Run from the repository root; Turborepo executes them in every package that defines them.
 
-| Script                | Description                            |
-| --------------------- | -------------------------------------- |
-| `pnpm dev`            | Start all apps in watch mode           |
-| `pnpm build`          | Build all packages and apps            |
-| `pnpm build:packages` | Build only the packages in `packages/` |
-| `pnpm check:ts`       | Type-check                             |
-| `pnpm check:lint`     | Lint                                   |
-| `pnpm check:format`   | Check formatting                       |
-| `pnpm fix:lint`       | Lint and apply auto-fixes              |
-| `pnpm fix:format`     | Format files                           |
-| `pnpm test`           | Run tests                              |
+| Script                | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| `pnpm dev`            | Start all apps and the outbox publisher in watch mode |
+| `pnpm build`          | Build all packages and apps                           |
+| `pnpm build:packages` | Build only the packages in `packages/`                |
+| `pnpm check:ts`       | Type-check                                            |
+| `pnpm check:lint`     | Lint                                                  |
+| `pnpm check:format`   | Check formatting                                      |
+| `pnpm fix:lint`       | Lint and apply auto-fixes                             |
+| `pnpm fix:format`     | Format files                                          |
+| `pnpm test`           | Run tests                                             |
 
 `check:*` scripts only report problems, `fix:*` scripts write changes.
+
+Server integration tests run sequentially against a dedicated `_test` database. Their setup resets it once per run and clears application tables before each test; do not point them at a development or shared database.
 
 Database scripts (run with `pnpm --filter <package> <script>` in `apps/auth` or `packages/app-db`):
 

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest"
 import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
-import { createFakeDeliveryPublisher } from "@/test/delivery-publisher"
 import { createTestTenant } from "@/test/factories"
 import { bearer, signTestToken } from "@/test/tokens"
 
@@ -10,7 +9,6 @@ let app: Awaited<ReturnType<typeof buildApp>>
 beforeEach(async () => {
   app = await buildApp({
     logger: false,
-    deliveryPublisher: createFakeDeliveryPublisher().publisher,
   })
 })
 

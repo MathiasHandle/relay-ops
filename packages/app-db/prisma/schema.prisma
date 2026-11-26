@@ -108,10 +108,37 @@ model Delivery {
   event   Event  @relation(fields: [eventId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   deliveryAttempts DeliveryAttempt[]
+  deliveryOutbox   DeliveryOutbox?
 
   @@unique([eventId, destinationId])
   @@index([destinationId])
   @@map("delivery")
+}
+
+enum DeliveryOutboxStatus {
+  PENDING
+  PUBLISHED
+}
+
+model DeliveryOutbox {
+  id          String    @id @default(cuid(2))
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  // check ((status = 'PUBLISHED') = (published_at IS NOT NULL))
+  publishedAt DateTime? @map("published_at")
+
+  status        DeliveryOutboxStatus @default(PENDING)
+  // check (attempts_count >= 0)
+  attemptsCount Int                  @default(0) @map("attempts_count")
+  nextAttemptAt DateTime             @map("next_attempt_at")
+  lastError     String?              @map("last_error")
+
+  deliveryId String   @unique @map("delivery_id")
+  delivery   Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([status, publishedAt])
+  @@index([status, nextAttemptAt])
+  @@map("delivery_outbox")
 }
 
 enum DeliveryAttemptStatus {

@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { generateKeyPair, SignJWT } from "jose"
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { CLIENT_SCOPES } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { env } from "@/config/env"
 import { meResponseBodySchema } from "@/modules/me/me.schemas"
-import { createFakeDeliveryPublisher } from "@/test/delivery-publisher"
 import { createTestTenant } from "@/test/factories"
 import { bearer, signTestToken } from "@/test/tokens"
 import { authErrorResponseSchema } from "./auth-error"
@@ -13,14 +12,10 @@ import { authErrorResponseSchema } from "./auth-error"
 let app: Awaited<ReturnType<typeof buildApp>>
 let tenant: Awaited<ReturnType<typeof createTestTenant>>
 
-beforeAll(async () => {
-  tenant = await createTestTenant()
-})
-
 beforeEach(async () => {
+  tenant = await createTestTenant()
   app = await buildApp({
     logger: false,
-    deliveryPublisher: createFakeDeliveryPublisher().publisher,
   })
 })
 
