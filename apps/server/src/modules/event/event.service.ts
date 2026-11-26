@@ -1,6 +1,5 @@
 import { isDeepStrictEqual } from "node:util"
-import { prisma } from "@relay-ops/app-db"
-import { DeliveryPublishError } from "@/shared/queue/delivery-publisher.errors"
+import { DeliveryOutboxStatus, prisma } from "@relay-ops/app-db"
 import {
   DailyEventQuotaExceededError,
   DisabledDestinationError,
@@ -12,7 +11,6 @@ import {
 import type { Event, Prisma } from "@relay-ops/app-db"
 import type { FastifyBaseLogger } from "fastify"
 import type z from "zod"
-import type { DeliveryPublisher } from "@/shared/queue/delivery-publisher"
 import type { destinationSchema } from "./event.schemas"
 
 type VerifyDestinationParams = {
@@ -178,6 +176,14 @@ async function saveEvent(params: SaveEventParams) {
       },
     })
 
+    await tx.deliveryOutbox.createMany({
+      data: createdDeliveries.map((d) => ({
+        deliveryId: d.id,
+        status: DeliveryOutboxStatus.PENDING,
+        nextAttemptAt: now,
+      })),
+    })
+
     return {
       createdEvent,
       createdDeliveries,
@@ -192,52 +198,10 @@ async function saveEvent(params: SaveEventParams) {
   return result
 }
 
-type PublishDeliveryJobsParams = {
-  eventId: string
-  deliveryIds: string[]
-  deliveryPublisher: DeliveryPublisher
-  logger: FastifyBaseLogger
-}
-
-/**
- * Publishes one delivery job per delivery
- */
-async function publishDeliveryJobs(params: PublishDeliveryJobsParams) {
-  const { eventId, deliveryIds, deliveryPublisher, logger } = params
-
-  try {
-    await deliveryPublisher.publish(
-      deliveryIds.map((deliveryId) => ({ deliveryId })),
-    )
-    logger.debug({ eventId, deliveryIds }, "delivery jobs published")
-  } catch (err) {
-    if (err instanceof DeliveryPublishError) {
-      logger.error(
-        {
-          err,
-          eventId,
-          deliveryId: err.deliveryId,
-          confirmedDeliveryIds: err.confirmedDeliveryIds,
-          unattemptedDeliveryIds: err.unattemptedDeliveryIds,
-        },
-        "Failed to publish delivery job",
-      )
-
-      return
-    }
-
-    logger.error(
-      { err, eventId, deliveryIds },
-      "Failed to publish delivery jobs",
-    )
-  }
-}
-
 type CreateEventParams = {
   organizationId: string
   requested: RequestedEvent & { event: { externalId: string } }
   logger: FastifyBaseLogger
-  deliveryPublisher: DeliveryPublisher
 }
 
 type CreateEventResult = {
@@ -249,7 +213,7 @@ type CreateEventResult = {
 export async function createEvent(
   params: CreateEventParams,
 ): Promise<CreateEventResult> {
-  const { organizationId, requested, logger, deliveryPublisher } = params
+  const { organizationId, requested, logger } = params
   const { externalId } = requested.event
 
   if (requested.destinations.length === 0) {
@@ -275,14 +239,6 @@ export async function createEvent(
     event: requested.event,
     destinationIds: destinations.map((d) => d.id),
     organizationId,
-    logger,
-  })
-
-  // process deliveries
-  await publishDeliveryJobs({
-    eventId: createdEvent.id,
-    deliveryIds: createdDeliveries.map((d) => d.id),
-    deliveryPublisher,
     logger,
   })
 

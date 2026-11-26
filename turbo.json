@@ -39,6 +39,11 @@
       "cache": false,
       "persistent": true,
       "dependsOn": ["^build"]
+    },
+    "dev:publisher": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
     }
   }
 }

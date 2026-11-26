@@ -14,17 +14,11 @@ import { healthModule } from "@/modules/health"
 import { meModule } from "@/modules/me"
 import { authenticate } from "@/shared/auth/authenticate"
 import { errorHandler, notFoundHandler } from "@/shared/errors/error-handler"
-import { createDeliveryPublisher } from "@/shared/queue/delivery-publisher"
-import { connectServerQueue } from "@/shared/queue/queue-connection"
 import { SWAGGER_OPTIONS, SWAGGER_UI_OPTIONS } from "@/shared/swagger"
-
-import type { DeliveryPublisher } from "@/shared/queue/delivery-publisher"
 
 type BuildAppOptions = {
   // disabled in tests
   logger: boolean
-  // tests pass a fake; otherwise a RabbitMQ publisher is created
-  deliveryPublisher?: DeliveryPublisher
 }
 
 export const buildApp = async (options: BuildAppOptions) => {
@@ -65,10 +59,6 @@ export const buildApp = async (options: BuildAppOptions) => {
     await prisma.$disconnect()
   })
 
-  const deliveryPublisher =
-    options.deliveryPublisher ??
-    createDeliveryPublisher({ channel: await connectServerQueue({ app }) })
-
   // swagger
   await app.register(swagger, SWAGGER_OPTIONS)
   await app.register(swaggerUi, SWAGGER_UI_OPTIONS)
@@ -80,7 +70,7 @@ export const buildApp = async (options: BuildAppOptions) => {
       v1.addHook("onRequest", authenticate)
 
       await v1.register(meModule)
-      await v1.register(eventModule, { deliveryPublisher })
+      await v1.register(eventModule)
     },
     { prefix: "/v1" },
   )

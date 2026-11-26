@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "build:packages": "turbo run build --filter=./packages/**",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev dev:publisher",
     "check:lint": "turbo run check:lint",
     "check:ts": "turbo run check:ts",
     "check:format": "turbo run check:format",

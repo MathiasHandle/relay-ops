@@ -8,6 +8,7 @@ import type { FastifyInstance } from "fastify"
 
 type ConnectServerQueueParams = {
   app: FastifyInstance
+  onDisconnect?: () => void
 }
 
 /**
@@ -15,18 +16,38 @@ type ConnectServerQueueParams = {
  * the connection when the app closes. One connection per app, shared by all publishers.
  */
 export async function connectServerQueue(params: ConnectServerQueueParams) {
-  const { app } = params
+  const { app, onDisconnect } = params
 
   const { connection, channel } = await connectQueue({
     url: env.RABBITMQ_URL,
     logger: app.log,
   })
-  await assertDeliveryTopology({ channel })
+
+  let closing = false
+  let channelClosed = false
+  let connectionClosed = false
+
+  channel.on("close", () => {
+    channelClosed = true
+    if (!closing) onDisconnect?.()
+  })
+
+  connection.on("close", () => {
+    connectionClosed = true
+    if (!closing) onDisconnect?.()
+  })
 
   app.addHook("onClose", async () => {
-    await channel.close()
-    await connection.close()
+    closing = true
+
+    try {
+      if (!channelClosed && !connectionClosed) await channel.close()
+    } finally {
+      if (!connectionClosed) await connection.close()
+    }
   })
+
+  await assertDeliveryTopology({ channel })
 
   return channel
 }
