@@ -119,6 +119,7 @@ kubectl apply -f infra/dist/local/auth/Service.*.yaml -f infra/dist/local/auth/D
   -f infra/dist/local/server/ -f infra/dist/local/worker/
 kubectl rollout status deployment/auth-deployment-c8168b25 -n relay-ops
 kubectl rollout status deployment/server-deployment-c8f6431d -n relay-ops
+kubectl rollout status deployment/outbox-publisher-deployment-c8556605 -n relay-ops
 kubectl rollout status deployment/worker-deployment-c8f5585d -n relay-ops
 ```
 
@@ -131,6 +132,8 @@ kubectl port-forward -n relay-ops service/server 3001:3001
 
 ## Notes
 
+- The server image also runs the separate outbox publisher Deployment. It retries publishing after failures; Kubernetes restarts the process when its channel closes or a batch times out. It removes published outbox records older than seven days.
+- The outbox migration does not backfill existing deliveries. Before switching an existing installation, stop producers and inspect pending deliveries and RabbitMQ queues; decide explicitly how to recover each uncertain delivery. Blindly creating pending outbox records can cause duplicate delivery. Complete the migration before starting the new server and publisher.
 - To rerun a finished Job, delete it with `kubectl delete -f <job-manifest>`, then repeat create/wait. This does not delete database data. Inspect failures with `kubectl logs -n relay-ops job/<job-name>`; never reset the database to rerun a Job.
 - Seeds are local only, preserve existing records, and include known credentials and placeholder destination URLs. Configure a trusted receiver before testing delivery.
 - PVCs retain data across Pod replacement and normally cluster stop/start. Deleting the PVC or cluster can remove data; a new cluster does not automatically reconnect old storage. PostgreSQL initialization Secrets only affect empty storage.
