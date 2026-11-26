@@ -1,3 +1,5 @@
+import { calculateBackoff } from "./backoff"
+
 import type { Channel } from "amqplib"
 
 export const MAX_DELIVERY_ATTEMPTS = 4
@@ -7,7 +9,13 @@ const RETRY_MULTIPLIER = 2
 
 function createRetryQueues() {
   return Array.from({ length: MAX_DELIVERY_ATTEMPTS - 1 }, (_, index) => {
-    const delaySeconds = RETRY_BASE_DELAY_SECONDS * RETRY_MULTIPLIER ** index
+    const delaySeconds =
+      calculateBackoff({
+        initialDelayMs: RETRY_BASE_DELAY_SECONDS * 1000,
+        multiplier: RETRY_MULTIPLIER,
+        maxDelayMs: Number.POSITIVE_INFINITY,
+        retryIndex: index,
+      }) / 1000
 
     return {
       queue: `deliveries.retry.${delaySeconds}s.v1`,

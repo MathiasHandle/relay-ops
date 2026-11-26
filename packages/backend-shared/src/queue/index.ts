@@ -1,3 +1,4 @@
+export { calculateBackoff } from "./backoff"
 export { deliveryJobSchema } from "./delivery-job"
 export {
   DELIVERY_TOPOLOGY,
