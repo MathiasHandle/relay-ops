@@ -8,16 +8,17 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 - `GET /health` (public), CORS allowing `https://hoppscotch.io` (manual API testing).
 - `/v1` scope: JWT verification via JWKS (`authenticate`), scope checks (`requireScopes`).
 - `GET /v1/me` (any valid token), `POST /v1/events` (`events:write`), idempotent by `externalId`;
-  a new event publishes one delivery job `{ deliveryId }` per delivery to RabbitMQ
-  (an idempotent retry publishes nothing).
+  a new event stores one outbox record per delivery in the same transaction. A separate
+  publisher process sends `{ deliveryId }` jobs to RabbitMQ; an idempotent retry creates none.
 - Swagger UI at `/docs`.
 
 ## Layout
 
 - `src/main.ts`: composition root, `buildApp({ logger: true })` + `listen`.
-- `src/app.ts`: `buildApp({ logger, deliveryPublisher? })`: Zod compilers, global error/404
-  handlers, CORS, RabbitMQ connection + delivery topology (skipped when a publisher is
-  passed), `onClose` (Prisma, RabbitMQ), module registration with prefixes.
+- `src/app.ts`: `buildApp({ logger })`: Zod compilers, global error/404 handlers, CORS,
+  Prisma `onClose` hook and module registration with prefixes; no RabbitMQ connection.
+- `src/publisher.ts`: separate process that publishes outbox batches and cleans up old
+  published records; exits on connection loss so its supervisor can restart it.
 - `src/config/env.ts`: Zod env schema (`PORT` default 3001, `RABBITMQ_URL` incl. vhost).
   `APP_DATABASE_URL` is validated by `@relay-ops/app-db`.
 - `src/shared/auth/`: `authenticate` (`onRequest` on `/v1`, sets `request.principal`),
@@ -28,12 +29,12 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
 - `src/shared/swagger/`: `@fastify/swagger` options (OpenAPI spec from Zod schemas via
   `jsonSchemaTransform`, global `bearerAuth`) and `@fastify/swagger-ui` options (UI at
   `/docs`, spec at `/docs/json`). Registered in `app.ts` before all modules, outside `/v1`.
-- `src/shared/queue/queue-connection.ts`: `connectServerQueue({ app })`: one RabbitMQ
-  connection + channel per app, delivery topology, closed in `onClose`.
-- `src/shared/queue/delivery-publisher.ts`: `DeliveryPublisher` type and
-  `createDeliveryPublisher({ channel })` (JSON, persistent, to the delivery exchange).
+- `src/shared/queue/queue-connection.ts`: publisher RabbitMQ connection, delivery topology,
+  disconnect notification and `onClose` cleanup.
+- `src/modules/delivery/`: outbox batch processing, cleanup and RabbitMQ delivery publisher.
 - `src/modules/health/`: `GET /health`.
-- Build: tsdown (`tsdown.config.ts`), output `dist/main.js`. Alias `@/*` → `src/*`.
+- Build: tsdown (`tsdown.config.ts`), outputs `dist/main.js` and `dist/publisher.js`.
+  Alias `@/*` → `src/*`.
 
 ## Rules
 
@@ -52,23 +53,21 @@ Public REST API (Fastify). Authenticates machine clients by verifying JWTs from
   code map; services never set HTTP status. The module error handler maps code → status
   (`Record<Code, number>`, so every code needs a status) and rethrows anything else to
   the global handler. Document these responses with `domainErrorResponseSchema`.
-- Modules receive queue publishers via plugin register options (e.g.
-  `eventModule` → `{ deliveryPublisher }`); they never connect to RabbitMQ themselves.
-- Publish only after the DB transaction commits.
+- Store event, deliveries and their outbox records in one database transaction.
+  The separate publisher sends committed outbox records to RabbitMQ.
 
 ## Testing
 
 - Vitest; test projects and file patterns are defined in `vitest.config.ts`.
 - Integration setup: `docker compose up -d`, copy `.env.test.example` to `.env.test`, run
-  `pnpm test:integration`. The database `relay_ops_app_test` (`postgres-app` container)
-  is created by `prisma migrate reset` (run in `packages/app-db`) on the first run.
+  `pnpm test:integration`. Global setup resets `relay_ops_app_test` via Prisma once per run.
+  Files run sequentially and setup clears application tables before each test.
 - The global setup serves a JWKS with a throwaway Ed25519 key at `AUTH_JWKS_URL`; tests
   sign tokens with `signTestToken` (`src/test/tokens.ts`), apps/auth is not needed.
 - Test data via `src/test/factories.ts` (random organization, identity, destination).
-- Tests pass `createFakeDeliveryPublisher()` (`src/test/delivery-publisher.ts`) to
-  `buildApp`, so they never connect to RabbitMQ; assert on its `published` jobs.
+- Outbox integration tests use a fake delivery publisher; delivery publisher unit tests
+  use a fake channel. They do not verify RabbitMQ protocol behavior with a real broker.
 
 ## Planned scope
 
 - `GET /v1/events/:id` or `GET /v1/deliveries/:id` with authorization checks.
-- Publish delivery jobs through a transactional outbox.

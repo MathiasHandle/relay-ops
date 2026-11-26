@@ -7,8 +7,8 @@ idempotency, retries, DLQ and a transactional outbox; strict tenant isolation by
 `Organization`.
 
 Current state: `apps/auth` issues JWTs (client credentials) and serves JWKS;
-`apps/server` verifies JWTs, checks scopes, stores events and publishes delivery jobs
-to RabbitMQ; `apps/worker` consumes them.
+`apps/server` verifies JWTs, checks scopes and stores events with an outbox; its separate
+publisher process sends delivery jobs to RabbitMQ, and `apps/worker` consumes them.
 App schema: see `packages/app-db`.
 
 ## Architecture
@@ -89,8 +89,9 @@ HTTP API), `apps/mcp`.
 - Integration tests use a dedicated database whose name ends with `_test`; a global setup
   refuses any other name, resets it once per run (`prisma migrate reset`) and creates it if
   missing. Never run tests against a dev or shared database.
-- Tests create their own data (random ids via helpers in `src/test/`), never rely on the
-  seed and never assume empty tables.
+- Tests create their own data (random ids via helpers in `src/test/`) and never rely on
+  the seed. Server integration tests run sequentially and clear application tables before
+  each test; other test suites must not assume empty tables unless their setup guarantees it.
 - Assert responses with the production Zod schemas instead of casting.
 - Prisma blocks `migrate reset` when run by an AI agent: ask the user for explicit consent
   before running integration tests, or let them run the tests.

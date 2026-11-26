@@ -11,6 +11,7 @@ frontend.
     process, TTL retry and dead-letter exchanges/queues with their bindings; used by the
     producer (server) and consumer (worker).
   - `deliveryJobSchema`, `DeliveryJob`: job message `{ deliveryId }`.
+  - `calculateBackoff(...)`: capped exponential retry delay in milliseconds.
 
 ## Rules
 
