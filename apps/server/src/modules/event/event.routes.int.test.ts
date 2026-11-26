@@ -5,7 +5,6 @@ import { CLIENT_SCOPES, DELIVERY_STATUS } from "@relay-ops/contracts"
 import { buildApp } from "@/app"
 import { authErrorResponseSchema } from "@/shared/auth/auth-error"
 import { domainErrorResponseSchema } from "@/shared/errors/error-response"
-import { createFakeDeliveryPublisher } from "@/test/delivery-publisher"
 import { createTestDestination, createTestTenant } from "@/test/factories"
 import { bearer, signTestToken } from "@/test/tokens"
 import { EVENT_ERROR_CODE } from "./event.errors"
@@ -14,13 +13,9 @@ import { createEventResponseSchema } from "./event.schemas"
 import type { ClientScope } from "@relay-ops/contracts"
 
 let app: Awaited<ReturnType<typeof buildApp>>
-// Shared by all tests: assert only on jobs of the deliveries a test created.
-const deliveryPublisher = createFakeDeliveryPublisher()
-
 beforeEach(async () => {
   app = await buildApp({
     logger: false,
-    deliveryPublisher: deliveryPublisher.publisher,
   })
 })
 
@@ -209,6 +204,49 @@ describe("POST /v1/events", () => {
   })
 
   describe("new event", () => {
+    it("rolls back the event and deliveries when the outbox insert fails", async () => {
+      const { organizationId, token } = await setupWriter()
+      const destination = await createTestDestination({ organizationId })
+      const body = eventBody({ destinations: [destination.humanReadableId] })
+
+      // Reject the outbox insert in PostgreSQL while keeping the real transaction.
+      await prisma.$executeRaw`
+        ALTER TABLE delivery_outbox
+        ADD CONSTRAINT test_reject_outbox_insert CHECK (false) NOT VALID
+      `
+
+      try {
+        const response = await postEvent({ token, body })
+        expect(response.statusCode).toBe(500)
+        expect(await countRows(organizationId)).toEqual({
+          events: 0,
+          deliveries: 0,
+        })
+        expect(
+          await prisma.deliveryOutbox.count({
+            where: { delivery: { organizationId } },
+          }),
+        ).toBe(0)
+      } finally {
+        await prisma.$executeRaw`
+          ALTER TABLE delivery_outbox
+          DROP CONSTRAINT IF EXISTS test_reject_outbox_insert
+        `
+      }
+
+      const retry = await postEvent({ token, body })
+      expect(retry.statusCode).toBe(201)
+      expect(await countRows(organizationId)).toEqual({
+        events: 1,
+        deliveries: 1,
+      })
+      expect(
+        await prisma.deliveryOutbox.count({
+          where: { delivery: { organizationId } },
+        }),
+      ).toBe(1)
+    })
+
     it("creates the event with one pending delivery per destination", async () => {
       const { organizationId, token } = await setupWriter()
       const first = await createTestDestination({ organizationId })
@@ -245,17 +283,29 @@ describe("POST /v1/events", () => {
 
       const stored = await prisma.event.findUniqueOrThrow({
         where: { id: created.event.id },
-        include: { delivery: true },
+        include: { delivery: { include: { deliveryOutbox: true } } },
       })
       expect(stored.organizationId).toBe(organizationId)
       expect(stored.payload).toEqual(body.event.payload)
       expect(stored.delivery.map((d) => d.id).sort()).toEqual(
         created.deliveries.map((d) => d.id).sort(),
       )
+      for (const delivery of stored.delivery) {
+        expect(delivery.deliveryOutbox).toMatchObject({
+          deliveryId: delivery.id,
+          status: "PENDING",
+          attemptsCount: 0,
+        })
+      }
       expect(await countRows(organizationId)).toEqual({
         events: 1,
         deliveries: 2,
       })
+      expect(
+        await prisma.deliveryOutbox.count({
+          where: { delivery: { organizationId } },
+        }),
+      ).toBe(2)
     })
   })
 
@@ -295,6 +345,11 @@ describe("POST /v1/events", () => {
         events: 1,
         deliveries: 2,
       })
+      expect(
+        await prisma.deliveryOutbox.count({
+          where: { delivery: { organizationId } },
+        }),
+      ).toBe(2)
     })
 
     it("treats destinations in a different order as the same event", async () => {

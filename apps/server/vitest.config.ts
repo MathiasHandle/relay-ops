@@ -29,6 +29,10 @@ export default defineConfig({
           include: ["src/**/*.int.test.ts"],
           // resets test DB + serves a JWKS with a temporary test signing key
           globalSetup: ["./src/test/global-setup.ts"],
+          // tests share one database; run files sequentially so cleanup cannot affect another test
+          fileParallelism: false,
+          // cleans DB records before each test to prevent affecting later tests
+          setupFiles: ["./src/test/integration-setup.ts"],
         },
       },
     ],
