@@ -8,7 +8,7 @@ type DeliveryIdParams = {
 export async function findDelivery(params: DeliveryIdParams) {
   const { db, deliveryId } = params
 
-  return db.delivery.findUnique({
+  return await db.delivery.findUnique({
     where: { id: deliveryId },
     select: {
       status: true,
@@ -26,6 +26,22 @@ export async function findDelivery(params: DeliveryIdParams) {
       },
     },
   })
+}
+
+export async function findDeliveryForUpdate(params: DeliveryIdParams) {
+  const { db, deliveryId } = params
+
+  // start FOR UPDATE lock
+  const rows = await db.$queryRaw<{ id: string }[]>`
+  SELECT id
+  FROM delivery
+  WHERE id = ${deliveryId}
+  FOR UPDATE
+  `
+
+  if (rows.length === 0) return null
+
+  return await findDelivery({ db, deliveryId })
 }
 
 type UpdateDeliveryStatusParams = DeliveryIdParams & {
