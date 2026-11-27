@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { createRetryPublisher } from "./delivery-retry.publisher"
 
 import type { ConfirmChannel, Options } from "amqplib"
@@ -86,6 +86,25 @@ describe("retry publisher", () => {
     const error = new Error("channel closed")
     publishedAt(channel, 0).confirm(error)
     await expect(result).rejects.toBe(error)
+  })
+
+  it("times out an unconfirmed publish", async () => {
+    vi.useFakeTimers()
+    try {
+      const { publisher } = setup()
+      const result = publisher.publish({
+        content: Buffer.from("job"),
+        routingKey: "delivery.retry.10s",
+      })
+      const timeoutAssertion = expect(result).rejects.toThrow(
+        "Retry publish confirm timed out",
+      )
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      await timeoutAssertion
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("associates a return with the correct concurrent publish", async () => {
