@@ -5,6 +5,7 @@ import { makeRequest } from "@/shared/http/make-request"
 import {
   createDeliveryAttempt,
   findDelivery,
+  findDeliveryForUpdate,
   updateDeliveryAttempt,
   updateDeliveryStatus,
 } from "./delivery.repository"
@@ -70,7 +71,6 @@ export async function processDelivery(
     return handleFailedAttempt({
       deliveryId,
       attemptId: attempt.id,
-      previousFailedAttempts: delivery._count.deliveryAttempts,
       result,
       logger: attemptLogger,
       startedAt,
@@ -179,32 +179,9 @@ async function completeDelivery(params: CompleteDeliveryParams) {
   })
 }
 
-type FailDeliveryParams = {
-  deliveryId: string
-  attemptId: string
-  responseCode: number | null
-  error: string
-}
-
-async function failDelivery(params: FailDeliveryParams) {
-  const { deliveryId, attemptId, responseCode, error } = params
-
-  await prisma.$transaction(async (tx) => {
-    await updateDeliveryAttempt({
-      db: tx,
-      deliveryId,
-      attemptId,
-      result: { status: "FAILED", responseCode, error },
-    })
-
-    await updateDeliveryStatus({ db: tx, deliveryId, status: "FAILED" })
-  })
-}
-
 type HandleFailedAttemptParams = {
   deliveryId: string
   attemptId: string
-  previousFailedAttempts: number
   result: Extract<DeliveryHttpResult, { kind: "failure" }>
   logger: FastifyBaseLogger
   startedAt: number
@@ -213,21 +190,17 @@ type HandleFailedAttemptParams = {
 async function handleFailedAttempt(
   params: HandleFailedAttemptParams,
 ): Promise<ProcessDeliveryResult> {
-  const {
-    deliveryId,
-    attemptId,
-    previousFailedAttempts,
-    result,
-    logger,
-    startedAt,
-  } = params
-  const failedAttemptsCount = previousFailedAttempts + 1
-  const maxAttemptsReached = failedAttemptsCount >= MAX_DELIVERY_ATTEMPTS
+  const { deliveryId, attemptId, result, logger, startedAt } = params
 
-  if (result.shouldRetry && !maxAttemptsReached) {
-    // retryable failure and max attempts not reached
+  const outcome = await prisma.$transaction(async (tx) => {
+    // DB lock FOR UPDATE
+    const delivery = await findDeliveryForUpdate({ db: tx, deliveryId })
+    if (!delivery) {
+      throw new Error("Delivery not found")
+    }
+
     await updateDeliveryAttempt({
-      db: prisma,
+      db: tx,
       deliveryId,
       attemptId,
       result: {
@@ -236,15 +209,35 @@ async function handleFailedAttempt(
         error: result.error,
       },
     })
-  } else {
-    // pernament failure or max attempts reached
-    await failDelivery({
-      deliveryId,
-      attemptId,
-      responseCode: result.responseCode,
-      error: result.error,
-    })
-  }
+
+    // prevent DELIVERED -> FAILED
+    if (delivery.status === "DELIVERED") {
+      return { kind: "already-delivered" as const }
+    }
+
+    // another attempt already ended this delivery; do not schedule retry
+    if (delivery.status === "FAILED") {
+      return { kind: "already-failed" as const }
+    }
+
+    const failedAttemptsCount = delivery._count.deliveryAttempts + 1
+    const maxAttemptsReached = failedAttemptsCount >= MAX_DELIVERY_ATTEMPTS
+
+    if (!result.shouldRetry) {
+      await updateDeliveryStatus({ db: tx, deliveryId, status: "FAILED" })
+      return { kind: "permanent-failure" as const }
+    }
+
+    if (maxAttemptsReached) {
+      await updateDeliveryStatus({ db: tx, deliveryId, status: "FAILED" })
+      return { kind: "max-attempts-reached" as const }
+    }
+
+    return {
+      kind: "retryable-failure" as const,
+      failedAttemptsCount,
+    }
+  })
 
   logger.warn(
     {
@@ -254,8 +247,5 @@ async function handleFailedAttempt(
     "Delivery attempt failed",
   )
 
-  if (!result.shouldRetry) return { kind: "permanent-failure" }
-  if (maxAttemptsReached) return { kind: "max-attempts-reached" }
-
-  return { kind: "retryable-failure", failedAttemptsCount }
+  return outcome
 }
