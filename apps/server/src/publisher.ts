@@ -1,6 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises"
 import Fastify from "fastify"
 import { prisma } from "@relay-ops/app-db"
+import { env } from "@/config/env"
 import {
   cleanupPublishedOutbox,
   createDeliveryPublisher,
@@ -8,7 +9,7 @@ import {
 } from "@/modules/delivery"
 import { connectServerQueue } from "@/shared/queue/queue-connection"
 
-const app = Fastify({ logger: true })
+const app = Fastify({ logger: { level: env.LOG_LEVEL } })
 const shutdown = new AbortController()
 
 // graceful shutdown

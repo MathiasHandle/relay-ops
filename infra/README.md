@@ -36,6 +36,8 @@ Use these cluster addresses, not `localhost`, in connection URLs:
 
 Use the matching database usernames, passwords and names from `compose.yaml`. Use the RabbitMQ application credentials from the Server or Worker example both in `rabbitmq-app-credentials.env` and in their `RABBITMQ_URL`. Preserve URL credentials, database names, vhost and query parameters while replacing the host and port with the cluster addresses above. Use the examples' JWT issuer and audience consistently; unlike the JWKS URL, the issuer is not a cluster Service address. Set the key path as shown in the table and leave `PORT` unset.
 
+Optionally set `LOG_LEVEL` in the auth, server or worker env file. It defaults to `info`; allowed values are `trace`, `debug`, `info`, `warn`, `error`, `fatal` and `silent`. Server and publisher share the server Secret. After updating a Secret, restart the corresponding Deployments to load the new value.
+
 Keep this directory for subsequent runs: PostgreSQL initializes credentials only on empty storage, and the Job does not rotate an existing RabbitMQ user's password.
 
 ```sh

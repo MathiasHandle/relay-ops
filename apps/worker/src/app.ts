@@ -15,7 +15,7 @@ type BuildAppOptions = {
 export const buildApp = async (options: BuildAppOptions) => {
   const { logger } = options
 
-  const app = Fastify({ logger })
+  const app = Fastify({ logger: logger ? { level: env.LOG_LEVEL } : false })
 
   const { connection, channel } = await connectQueue({
     url: env.RABBITMQ_URL,

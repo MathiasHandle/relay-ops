@@ -4,6 +4,8 @@ import { Command, InvalidArgumentError } from "commander"
 import { renderAppDb } from "./apps/app-db/render"
 import { renderAuth } from "./apps/auth/render"
 import { renderAuthDb } from "./apps/auth-db/render"
+import { renderGrafanaAlloy } from "./apps/grafana-alloy/render"
+import { renderLoki } from "./apps/loki/render"
 import { renderRabbitMQ } from "./apps/rabbitmq/render"
 import { renderServer } from "./apps/server/render"
 import { renderWorker } from "./apps/worker/render"
@@ -14,6 +16,8 @@ const charts = {
   // local only charts
   authDb: renderAuthDb,
   appDb: renderAppDb,
+  loki: renderLoki,
+  grafanaAlloy: renderGrafanaAlloy,
 
   // production charts
   authApp: renderAuth,
