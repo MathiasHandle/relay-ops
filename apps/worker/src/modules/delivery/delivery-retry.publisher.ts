@@ -25,8 +25,14 @@ export function createRetryPublisher(params: CreateRetryPublisherParams) {
     const entry = { returned: false }
     pending.set(messageId, entry)
 
+    let timeout: ReturnType<typeof setTimeout> | undefined
+
     try {
       await new Promise<void>((resolve, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error("Retry publish confirm timed out"))
+        }, 5000)
+
         channel.publish(
           DELIVERY_TOPOLOGY.retry.exchange,
           routingKey,
@@ -49,6 +55,7 @@ export function createRetryPublisher(params: CreateRetryPublisherParams) {
         )
       })
     } finally {
+      clearTimeout(timeout)
       pending.delete(messageId)
     }
   }
