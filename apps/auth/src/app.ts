@@ -19,7 +19,7 @@ type BuildAppOptions = {
 }
 
 export const buildApp = async ({ logger }: BuildAppOptions) => {
-  const app = Fastify({ logger })
+  const app = Fastify({ logger: logger ? { level: env.LOG_LEVEL } : false })
 
   // Validate and serialize route schemas with Zod.
   app.setValidatorCompiler(validatorCompiler)

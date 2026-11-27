@@ -58,9 +58,8 @@ const oauthIdentities: Prisma.OAuthIdentityCreateManyInput[] = [
 const destinations: Prisma.DestinationCreateManyInput[] = [
   {
     id: "d1acmewebhooksite0000001",
-    humanReadableId: "webhook-site",
-    // replace with real url
-    url: "https://webhook.site/00000000-0000-4000-8000-000000000001",
+    humanReadableId: "ntfy",
+    url: "https://ntfy.sh/relay-ops-XJ4i3bDH36",
     organizationId: "qxs4noubn2htag8cara4g2qo",
     createdAt: "2026-11-11T09:00:00.000Z",
     updatedAt: "2026-11-11T09:00:00.000Z",
@@ -78,8 +77,8 @@ const destinations: Prisma.DestinationCreateManyInput[] = [
   {
     // Same humanReadableId as Acme's: tenant isolation tests.
     id: "d3globexwebhooksite00003",
-    humanReadableId: "webhook-site",
-    url: "https://webhook.site/00000000-0000-4000-8000-000000000003",
+    humanReadableId: "ntfy",
+    url: "https://ntfy.sh/relay-ops-FPZY6EB7wY2d9Ye5",
     organizationId: "cqulf4v9n0uz6pwnnon7jyv1",
     createdAt: "2026-11-11T09:00:00.000Z",
     updatedAt: "2026-11-11T09:00:00.000Z",

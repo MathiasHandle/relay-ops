@@ -1,5 +1,6 @@
 import { Chart, Duration, Size } from "cdk8s"
 import kplus from "cdk8s-plus-32"
+import { Project } from "@/constants"
 import { Worker } from "./constants"
 
 import type { Construct } from "constructs"
@@ -18,6 +19,12 @@ export class WorkerChart extends Chart {
     new kplus.Deployment(this, "deployment", {
       replicas: 1,
       strategy: kplus.DeploymentStrategy.rollingUpdate(),
+      podMetadata: {
+        labels: {
+          "app.kubernetes.io/name": Worker.appName,
+          "app.kubernetes.io/part-of": Project.name,
+        },
+      },
       containers: [
         {
           image: props.image,

@@ -36,6 +36,8 @@ Use these cluster addresses, not `localhost`, in connection URLs:
 
 Use the matching database usernames, passwords and names from `compose.yaml`. Use the RabbitMQ application credentials from the Server or Worker example both in `rabbitmq-app-credentials.env` and in their `RABBITMQ_URL`. Preserve URL credentials, database names, vhost and query parameters while replacing the host and port with the cluster addresses above. Use the examples' JWT issuer and audience consistently; unlike the JWKS URL, the issuer is not a cluster Service address. Set the key path as shown in the table and leave `PORT` unset.
 
+Optionally set `LOG_LEVEL` in the auth, server or worker env file. It defaults to `info`; allowed values are `trace`, `debug`, `info`, `warn`, `error`, `fatal` and `silent`. Server and publisher share the server Secret. After updating a Secret, restart the corresponding Deployments to load the new value.
+
 Keep this directory for subsequent runs: PostgreSQL initializes credentials only on empty storage, and the Job does not rotate an existing RabbitMQ user's password.
 
 ```sh
@@ -129,6 +131,25 @@ Run each port-forward in a separate terminal:
 kubectl port-forward -n relay-ops service/auth 3002:3002
 kubectl port-forward -n relay-ops service/server 3001:3001
 ```
+
+## 6. Local log viewer
+
+Grafana uses its own persistent storage for users and dashboards; Loki stores logs separately. Create local Grafana credentials once and preserve the file and Secret for an existing installation:
+
+```sh
+umask 077
+test -f "$RELAY_OPS_ENV_DIR/grafana-admin-credentials.env" || printf 'GF_SECURITY_ADMIN_USER=admin\nGF_SECURITY_ADMIN_PASSWORD=%s\n' "$(openssl rand -hex 24)" > "$RELAY_OPS_ENV_DIR/grafana-admin-credentials.env"
+kubectl create secret generic grafana-admin-credentials -n relay-ops --from-env-file="$RELAY_OPS_ENV_DIR/grafana-admin-credentials.env"
+pnpm --filter @relay-ops/infra synth local
+kubectl apply -f infra/dist/local/loki/
+kubectl rollout status deployment/loki-deployment-c8cf3120 -n relay-ops
+kubectl apply -f infra/dist/local/grafana-alloy/ -f infra/dist/local/grafana/
+kubectl rollout status deployment/grafana-alloy-deployment-c831649b -n relay-ops
+kubectl rollout status deployment/grafana-deployment-c8f93cac -n relay-ops
+kubectl port-forward -n relay-ops service/grafana 3000:3000
+```
+
+Open http://localhost:3000 and sign in with the credentials in `grafana-admin-credentials.env`. In Explore, select Loki and query `{service_name="worker"}`; use `| json` to parse structured logs. Grafana provisions the Loki datasource automatically. Changing the Secret does not reset an existing Grafana admin password.
 
 ## Notes
 

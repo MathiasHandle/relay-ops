@@ -1,0 +1,43 @@
+// discover targets from Kubernetes: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kubernetes/
+discovery.kubernetes "apps" {
+  // discover Pods and their containers
+  role = "pod"
+
+  namespaces {
+    // restrict discovery to the namespace where Alloy runs
+    own_namespace = true
+  }
+
+  selectors {
+    // ask the Kubernetes API for only the four application Pods
+    role  = "pod"
+    label = "app.kubernetes.io/part-of=relay-ops,app.kubernetes.io/name in (auth,server,outbox-publisher,worker)"
+  }
+}
+
+// convert Kubernetes metadata into a log label: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.relabel/
+discovery.relabel "apps" {
+  // process the targets discovered above
+  targets = discovery.kubernetes.apps.targets
+
+  rule {
+    // copy the Pod's app.kubernetes.io/name label to the Loki service_name label
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    target_label  = "service_name"
+  }
+}
+
+// read container logs through the Kubernetes API: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.kubernetes/
+loki.source.kubernetes "apps" {
+  // read from the relabeled targets and forward their logs to the Loki writer
+  targets    = discovery.relabel.apps.output
+  forward_to = [loki.write.local.receiver]
+}
+
+// send log entries to Loki: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.write/
+loki.write "local" {
+  endpoint {
+    // use the Loki Kubernetes Service in the same namespace
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
