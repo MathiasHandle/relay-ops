@@ -132,6 +132,25 @@ kubectl port-forward -n relay-ops service/auth 3002:3002
 kubectl port-forward -n relay-ops service/server 3001:3001
 ```
 
+## 6. Local log viewer
+
+Grafana uses its own persistent storage for users and dashboards; Loki stores logs separately. Create local Grafana credentials once and preserve the file and Secret for an existing installation:
+
+```sh
+umask 077
+test -f "$RELAY_OPS_ENV_DIR/grafana-admin-credentials.env" || printf 'GF_SECURITY_ADMIN_USER=admin\nGF_SECURITY_ADMIN_PASSWORD=%s\n' "$(openssl rand -hex 24)" > "$RELAY_OPS_ENV_DIR/grafana-admin-credentials.env"
+kubectl create secret generic grafana-admin-credentials -n relay-ops --from-env-file="$RELAY_OPS_ENV_DIR/grafana-admin-credentials.env"
+pnpm --filter @relay-ops/infra synth local
+kubectl apply -f infra/dist/local/loki/
+kubectl rollout status deployment/loki-deployment-c8cf3120 -n relay-ops
+kubectl apply -f infra/dist/local/grafana-alloy/ -f infra/dist/local/grafana/
+kubectl rollout status deployment/grafana-alloy-deployment-c831649b -n relay-ops
+kubectl rollout status deployment/grafana-deployment-c8f93cac -n relay-ops
+kubectl port-forward -n relay-ops service/grafana 3000:3000
+```
+
+Open http://localhost:3000 and sign in with the credentials in `grafana-admin-credentials.env`. In Explore, select Loki and query `{service_name="worker"}`; use `| json` to parse structured logs. Grafana provisions the Loki datasource automatically. Changing the Secret does not reset an existing Grafana admin password.
+
 ## Notes
 
 - The server image also runs the separate outbox publisher Deployment. It retries publishing after failures; Kubernetes restarts the process when its channel closes or a batch times out. It removes published outbox records older than seven days.
